@@ -1,0 +1,16 @@
+Task ngày 8/11/2024:
+Note:
+- Tìm hiểu giải thuật đằng sau hàm filterWord + filterBackground.
+- Trình bày công thức chuyển đổi từ RGB sang Dbz ở mỗi pixel.
+- Quay lại vẽ 1 ngưỡng với Dbz cố định.
+- Xem contour sau khi bóc ra là 1 vùng khép kín hay ko.
+- Xem lại giải thuật draw contour.
+
+Task ngày 8/11/2024:
+Note:
+- Tìm hiểu giải thuật đằng sau hàm filterWord + filterBackground.
+- Trình bày công thức chuyển đổi từ RGB sang Dbz ở mỗi pixel.
+- Quay lại vẽ 1 ngưỡng với Dbz cố định.
+- Xem contour sau khi bóc ra là 1 vùng khép kín hay ko.
+- Xem lại giải thuật draw contour.
+
