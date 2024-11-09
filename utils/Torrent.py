@@ -13,7 +13,7 @@ def generate_torrent_file(path: Path,
                           output_dir: Path,
                           ip_addr: str,
                           port: int,
-                          piece_size=1024,
+                          piece_size: int,
                           ) -> Path:
     """
     Generate a .torrent(json) file, save in torrents directory

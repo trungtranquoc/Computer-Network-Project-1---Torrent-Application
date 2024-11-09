@@ -9,7 +9,7 @@ from turtledemo.penrose import f
 from typing import Tuple, Dict, Union, List
 import threading
 from utils import Connection, generate_torrent_file, hash_torrent
-from utils.threads import DownloadTask, DownloadThread
+from utils.threads import DownloadTask, DownloadThread, ClientListenThread
 
 
 class Client:
@@ -17,7 +17,7 @@ class Client:
     __listen_addr: Tuple[str, int]
     __connections: Dict
     __folder_path: Union[str , Path]
-    __listener_thread: threading.Thread
+    __listener_thread: ClientListenThread
     __command_line_thread: threading.Thread
 
     def __init__(self, port: int, listen_port: int):
@@ -30,7 +30,8 @@ class Client:
 
         # Multitasking
         self.__command_line_thread = threading.Thread(target=self._command_line_program)
-        self.__listener_thread = threading.Thread(target=self._listening_for_connections)
+        self.__listener_thread = ClientListenThread(self.__folder_path,
+                                                    addr=self.__listen_addr, client_name=f"client_{port}")
 
         # Case client not exist yet, then we add directory
         if not os.path.exists(self.__folder_path):
@@ -48,7 +49,7 @@ class Client:
         self.__command_line_thread.join()
 
 
-    def create_torrent_file(self, file_name: str, server_addr: Tuple[str, int] = ("localhost", 25565)):
+    def create_torrent_file(self, file_name: str, server_addr: Tuple[str, int] = ("localhost", 25565), piece_size: int = 1024):
         """
         create torrent file for a sharing file
 
@@ -61,11 +62,12 @@ class Client:
         print("-"*33)
         try:
             ip_addr, port = server_addr
-            torrent_path = generate_torrent_file(file_path, output_dir, ip_addr, port)
+            torrent_path = generate_torrent_file(file_path, output_dir, ip_addr, port, piece_size)
 
             print(f"[SUCCESSFULLY] New torrent file has been created in {torrent_path} !")
         except Exception as e:
             print(f"[ERROR] Can not create new torrent file due to error: {e}")
+            pass
         finally:
             print("-" * 33)
 
@@ -79,15 +81,18 @@ class Client:
             server_addr = (ip, int(port))
             print(f"Upload file to server {server_addr}")
             server_conn: Connection = self._connect_server(server_addr)
+            if server_conn is None:
+                print('[ERROR] Can not connect to server')
+                return
 
             # Send data
             torrent_data_dump = json.dumps(data)
             server_conn.upload_command(torrent_data_dump, self.__listen_addr)
 
         except FileNotFoundError:
-            print('Can not open torrent file')
+            print('[ERROR] Can not open torrent file')
         except Exception as e:
-            print(f"Can not start upload torrent file due to error: {e}")
+            print(f"[ERROR] Can not start upload torrent file due to error: {e}")
 
     def show_progress(self):
         ## TODO
@@ -105,34 +110,37 @@ class Client:
                 print(f"Upload file to server {server_addr}")
                 server_conn: Connection = self._connect_server(server_addr)
 
+                if server_conn is None:
+                    print('[ERROR] Can not connect to server')
+                    return
+
                 # Send data
                 torrent_data_dump = json.dumps(data)
                 seeders = server_conn.download_command(torrent_data_dump)
+
         except FileNotFoundError:
-            print('Can not open torrent file')
+            print('[ERROR] Can not open torrent file')
             return
         except Exception as e:
-            print(f'{e}\nCan not start download file')
+            print(f'[ERROR] Can not start download file due to error: {e}')
             return
 
-        # Create DownloadTask here
         if seeders is None:
             print("[ERROR] No seeders found for this swarm !")
         else:
             print(f"List of swarms: {seeders}")
-            pass
+
+            file_id: int = hash_torrent(data)
+            download_task: DownloadThread = DownloadThread(file_id=file_id,
+                                                           torrent_data=data,
+                                                           seeders=seeders,
+                                                           download_dir=self.__folder_path,
+                                                           )
+
+            download_task.daemon = True
+            download_task.start()
 
         print("-"*33)
-        file_id: int = hash_torrent(data)
-        file_name: str = data["name"] + data["extension"]
-        total_size: int = data["size"]
-        pieces: List[str] = data["pieces"]
-        downloadTask: DownloadThread  = DownloadThread(file_id=file_id,
-                                                       file_name=file_name,
-                                                       total_size=total_size,
-                                                       addr=server_addr,
-                                                       pieces=pieces,
-                                                       seeders=seeders)
 
     def show_directory(self):
         print("-"*33)
@@ -163,8 +171,15 @@ class Client:
 
     def _connect_server(self, server_addr: Tuple[str, int]):
         if server_addr not in self.__connections.keys():
-            self.__connections[server_addr] = Connection(server_addr)
-            self.__connections[server_addr].run()
+            try:
+                self.__connections[server_addr] = Connection(server_addr)
+                self.__connections[server_addr].run()
+            except Exception as e:
+                print(f"Can not connect to server {server_addr} due to error: {e}")
+                if server_addr in self.__connections.keys():
+                    del self.__connections[server_addr]
+
+                return None
 
         return self.__connections[server_addr]
 
@@ -176,6 +191,10 @@ class Client:
             if len(info) == 5 and info[0] == "create" and info[1] == "torrent":
                 server_addr = info[3], int(info[4])
                 self.create_torrent_file(file_name=info[2], server_addr=server_addr)
+            if len(info) == 6 and info[0] == "create" and info[1] == "torrent":
+                server_addr = info[3], int(info[4])
+                piece_size = int(info[5])
+                self.create_torrent_file(file_name=info[2], server_addr=server_addr, piece_size=piece_size)
             elif len(info) == 2 and info[0] == "upload":
                 self.upload_torrent(torrent_file=info[1])
             elif len(info) == 2 and info[0] == "download":
@@ -192,23 +211,6 @@ class Client:
                 print("[ERROR] Command not found")
 
         print("Program has been terminate !")
-
-
-    def _listening_for_connections(self):
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind(self.__listen_addr)
-        server_socket.listen()
-
-        print(f"[LISTENING] Client_{self.__client_addr[1]} is listening on {self.__listen_addr}")
-        while True:
-            client_socket, addr = server_socket.accept()
-
-            # Save in the connections list
-            client_ip, client_port = addr
-            addr = client_ip, int(client_port)
-            self.__connections[addr] = client_socket
-
-            print(f"[ACCEPTED] Accepted connection from {addr}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:

@@ -91,32 +91,34 @@ class Server:
         print("-"*33)
 
     def _listening_for_connections(self):
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind(self.__addr)
-        server_socket.listen()
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+            server_socket.bind(self.__addr)
+            server_socket.listen()
 
-        print(f"[LISTENING] Server is listening on {self.__addr}")
-        while True:
-            client_socket, addr = server_socket.accept()
+            print(f"[LISTENING] Server is listening on {self.__addr}")
+            while True:
+                client_socket, addr = server_socket.accept()
 
-            # Save in the connections list
-            client_ip, client_port = addr
-            addr = client_ip, int(client_port)
-            self.__connections[addr] = client_socket
+                # Save in the connections list
+                client_ip, client_port = addr
+                addr = client_ip, int(client_port)
+                self.__connections[addr] = client_socket
 
-            print(f"[ACCEPTED] Accepted connection from {addr}")
+                print(f"[ACCEPTED] Accepted connection from {addr}")
 
-            connect_thread = threading.Thread(target=self._connection, args=(client_socket, addr))
-            connect_thread.daemon = True
-            connect_thread.start()
+                connect_thread = threading.Thread(target=self._connection, args=(client_socket, addr))
+                connect_thread.daemon = True
+                connect_thread.start()
 
     def _connection(self, conn: socket.socket, client_addr: Tuple[str, int]):
         client_name = f"{client_addr[0]}:{client_addr[1]}"
 
         while True:
             command = conn.recv(4096).decode()           # Receive command here
-            info = command.split("::")
+            if not command:
+                break
 
+            info = command.split("::")
             print("-"*33)
             print(f"{client_name}> data: {info}")
 
@@ -137,13 +139,12 @@ class Server:
                     conn.sendall("Error".encode())
                 else:
                     conn.sendall(json.dumps(swarm_lists).encode())
-            elif len(info) == 1 and info[0] == "quit":
-                break
             else:
                 print("[ERROR] Unknown command")
 
             print("-"*33)
 
+        print(f"Client {client_name} disconnected !")
         conn.close()
 
     def _command_line_program(self):

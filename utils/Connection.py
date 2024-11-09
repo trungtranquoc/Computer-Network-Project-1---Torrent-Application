@@ -22,7 +22,7 @@ class Connection:
 
             print(f"Connect to server {self.__addr} successfully !")
         except Exception as e:
-            print(f"Can not connect to server {self.__addr} due to error: {e}")
+            raise Exception(e)
 
     def quit(self):
         self.__conn.close()
@@ -66,10 +66,11 @@ class Connection:
         self.__conn.sendall(f"download::{torrent_data}".encode())
 
         # Receive notification message
-        rcv_data = self.__conn.recv(1024).decode()
-        if rcv_data is "Error":
+        rcv_data = self.__conn.recv(4096).decode()
+        if rcv_data == "Error":
             return None
 
-        seeders: List[Tuple[str, int]] = json.loads(rcv_data)
-
+        seeders: List[Tuple[str, int]] = [tuple(s) for s in json.loads(rcv_data)]
+        # print(f'rcv_data: {rcv_data}')
+        # print(f'seeders: {seeders}')
         return seeders
