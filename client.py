@@ -209,7 +209,7 @@ class Client:
         self.__download_tasks[swarm_key] = download_task
         self.__swarms[swarm_key] = download_task
 
-        print(f'Download file with id {swarm_key} !')
+        print(f'Download file with id {swarm_key} ! Seeders list: {seeders}')
 
         download_task.start()
 

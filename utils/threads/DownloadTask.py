@@ -145,7 +145,6 @@ class DownloadThread(Thread, Swarm):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as downloadSocket:
             # Connect to seeder
             downloadSocket.connect(seeder)
-            print(f'Prepare to to send torrent to Seeder: {seeder}')
             downloadSocket.sendall(json.dumps(self.__torrent_data).encode())
 
             data = downloadSocket.recv(BUFFER_SIZE)
