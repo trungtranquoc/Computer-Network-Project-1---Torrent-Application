@@ -1,29 +1,30 @@
 import socket
 import json
-from curses.ascii import isdigit
-from pprint import pprint
 from threading import Thread
 from typing import List, Tuple, Union, Dict
 from pathlib import Path
 import sys
+from custom import Address
 
 class ClientListenThread(Thread):
     """
     Thread for listening to download request.
     """
     __folder_path: Path
-    __seed_addr: Tuple[str, int]
+    __seed_addr: Address
     __listening_socket: socket.socket
     __seeding_socket: List[socket.socket]
     __input_str: str
 
-    def __init__(self, folder_path: Path, addr: Tuple[str, int], client_name: str):
+    def __init__(self, folder_path: Path, addr: Address, client_name: str, daemon: bool = True):
         """
-
-        :param folder_path: folder path of client.
-        :param addr: address of  current client.
+        
+        :param folder_path: folder of the client
+        :param addr: listennig
+        :param client_name: 
+        :param daemon: 
         """
-        super().__init__()
+        super().__init__(daemon=daemon)
         self.__folder_path = folder_path
         self.__seed_addr = addr
         self.__listening_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -67,7 +68,7 @@ class SeedingThread(Thread):
 
     def __init__(self, folder_path: Path, torrent_data: dict, leech_conn: socket.socket):
         super().__init__()
-        # self.__leech_addr: Tuple[str, int] = leecher
+        # self.__leech_addr: Address = leecher
         self.__folder_path: Path = folder_path
         self.__file_name: str = torrent_data['name'] + torrent_data['extension']
         self.__file_size: int = torrent_data['size']
@@ -90,9 +91,6 @@ class SeedingThread(Thread):
                 data: str = s.recv(4096).decode()
                 if data == "STOP":
                     break
-                # if not isdigit(data):
-                #     print(f'piece_idx must be an integer, got {data} instead')
-                #     s.sendall()
 
                 piece_idx: int = int(data)
                 # s.sendall(send)

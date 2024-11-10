@@ -5,13 +5,14 @@ from typing import Tuple, Dict, Union, List
 import sys
 from utils import hash_torrent
 import pprint
+from custom import Address
 
 HOST = "localhost"
 PORT = 1232
 
 class Server:
-    __addr: Tuple[str, int]
-    __connections: Dict[Tuple[str, int], socket.socket]
+    __addr: Address
+    __connections: Dict[Address, socket.socket]
     __listener_thread: threading.Thread
     __command_line_thread: threading.Thread
     __swarms: dict
@@ -19,7 +20,7 @@ class Server:
 
     def __init__(self):
         self.__addr = (HOST, PORT)
-        self.__listener_thread = threading.Thread(target=self._listening_for_connections)
+        self.__listener_thread = threading.Thread(target=self._listening_for_connections, daemon=True)
         self.__command_line_thread = threading.Thread(target=self._command_line_program)
 
         self.__connections = {}
@@ -28,14 +29,13 @@ class Server:
         self.__swarms_lock = threading.Lock()
 
     def run(self):
-        self.__listener_thread.daemon = True           # Terminate when main thread end
         self.__listener_thread.start()
         self.__command_line_thread.start()
 
         # Only command line thread due to control stop of the program
         self.__command_line_thread.join()
 
-    def add_new_swarm(self, torrent_data: dict, client_addr: Tuple[str, int]) -> int:
+    def add_new_swarm(self, torrent_data: dict, client_addr: Address) -> int:
         """
 
         :param torrent_data: json file of torrent data
@@ -61,14 +61,12 @@ class Server:
 
         return key
 
-    def get_swarm(self, torrent_data: dict) -> Union[List[Tuple[str, int]], None]:
+    def get_swarm(self, key: int) -> Union[List[Address], None]:
         """
 
         :param torrent_data: Dictionary of torrent data
         :return: none of swarm do not exist, otherwise: none
         """
-        key = hash_torrent(torrent_data)
-
         with self.__swarms_lock:
             if key not in self.__swarms.keys():
                 return None
@@ -106,11 +104,10 @@ class Server:
 
                 print(f"[ACCEPTED] Accepted connection from {addr}")
 
-                connect_thread = threading.Thread(target=self._connection, args=(client_socket, addr))
-                connect_thread.daemon = True
+                connect_thread = threading.Thread(target=self._connection, args=(client_socket, addr), daemon=True)
                 connect_thread.start()
 
-    def _connection(self, conn: socket.socket, client_addr: Tuple[str, int]):
+    def _connection(self, conn: socket.socket, client_addr: Address):
         client_name = f"{client_addr[0]}:{client_addr[1]}"
 
         while True:
@@ -129,16 +126,27 @@ class Server:
                 torrent_data = json.loads(info[3])
                 try:
                     key = self.add_new_swarm(torrent_data, client_addr)
+                    # Send key of client back to the client
+                    conn.sendall(str(key).encode())
                 except Exception as e:
                     print(f"[Error] Error when create swarm: {e}")
-            elif len(info) == 2 and "download":
+
+            elif len(info) == 2 and info[0] == "download":
                 torrent_data = json.loads(info[1])
-                swarm_lists = self.get_swarm(torrent_data)
+                key = hash_torrent(torrent_data)
+                swarm_lists = self.get_swarm(key)
 
                 if swarm_lists is None:
                     conn.sendall("Error".encode())
                 else:
-                    conn.sendall(json.dumps(swarm_lists).encode())
+                    conn.sendall(f"{key}::{json.dumps(swarm_lists)}".encode())
+            elif len(info) == 3 and info[0] == "download" and info[1] == "key":
+                key = int(json.loads(info[2]))
+
+                if key not in self.__swarms.keys():
+                    conn.sendall("Error".encode())
+                else:
+                    conn.sendall(json.dumps(self.__swarms[key]).encode())
             else:
                 print("[ERROR] Unknown command")
 

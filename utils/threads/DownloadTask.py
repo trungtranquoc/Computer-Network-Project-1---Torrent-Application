@@ -6,49 +6,64 @@ from threading import Thread
 from typing import Tuple, List, Dict
 import time
 from pathlib import Path
+from enum import Enum
+from ..Connection import Connection
+from ..Swarm import Swarm, SwarmStatus
+from custom import Address
+
 
 BUFFER_SIZE = 4096
 BIT_STR_LOCK = threading.Lock()
+STATUS_UPDATE_LOCK = threading.Lock()
 
-class DownloadThread(Thread):
+class DownloadStatus(Enum):
+    INITIAL = 0
+    DOWNLOADING = 1
+    COMPLETE = 2
+    SKIPPED = 3
+    ERROR = 4
+
+class DownloadThread(Thread, Swarm):
     def __init__(self,
                  file_id: int,
                  torrent_data: dict,
-                 seeders: List[Tuple[str, int]],
-                 download_dir: Path):
-        super().__init__()
-        self.file_id = file_id
-        self.torrent_data = torrent_data
-        self.seeders = seeders
-        self.download_dir = download_dir
+                 seeders: List[Address],
+                 server_conn: Connection,                       # Notify server to become seeder
+                 listen_addr: Address,                  # Notify server to become seeder
+                 download_dir: Path,
+                 daemon: bool = True,
+                 ):
+        Thread.__init__(self, daemon=daemon)
+        Swarm.__init__(self, file_id=file_id, server_conn=server_conn)
+        self.__torrent_data = torrent_data
+        self.__seeders = seeders
+        self.__download_dir = download_dir
+        self.__listen_addr = listen_addr
 
-        self.progress = 0
-        self.bit_field = ['0'] * len(self.torrent_data['pieces'])
-        self.completed = False
+        self.bit_field = ['0'] * len(self.__torrent_data['pieces'])
+        self.status: DownloadStatus = DownloadStatus.INITIAL
         self.skipped = False
-
-
+        self.error_message: str = ''
 
     def run(self):
-        # TODO
-        seeders_count = len(self.seeders)
-        total_piece = len(self.torrent_data['pieces'])
+        if self.status != DownloadStatus.INITIAL:
+            print("File already downloaded !")
+            return
+
+        seeders_count = len(self.__seeders)
+        total_piece = len(self.__torrent_data['pieces'])
         piece_distribution: List[Tuple[int, int]] = self._assign_piece_distribution_to_seeders(
             total_piece=total_piece,
             seeders_count=seeders_count
         )
 
-        segment_list: List[bytearray] = [bytearray() for _ in range(len(self.seeders))]
-        # flag: List[bool] = [True] * len(self.seeders)
+        segment_list: List[bytearray] = [bytearray() for _ in range(len(self.__seeders))]
 
         download_threads: List[threading.Thread] = []
+        self.status = DownloadStatus.DOWNLOADING
         for i in range(seeders_count):
             helper_thread = threading.Thread(target=self.download_from_peers_helper,
-                                             args=(i,
-                                                   piece_distribution[i],
-                                                   self.seeders[i],
-                                                   segment_list,
-                                                   ))
+                                             args=(i, piece_distribution[i], self.__seeders[i], segment_list,))
             helper_thread.start()
             download_threads.append(helper_thread)
 
@@ -56,22 +71,27 @@ class DownloadThread(Thread):
         for i in range(seeders_count):
             download_threads[i].join()
 
+        if self.status != DownloadStatus.DOWNLOADING:
+            return
+
         if not all([bit == '1' for bit in self.bit_field]):
-            print('[Error] Download unsuccessfully')
+            self.status = DownloadStatus.ERROR
+            self.error_message = "Missing on some pieces"
         else:
             completeBytesArray: bytearray = bytearray()
             for idx, segment in enumerate(segment_list):
                 completeBytesArray.extend(segment)
-
             try:
-                file_name = self.torrent_data['name'] + self.torrent_data['extension']
-                with open(self.download_dir / file_name, "wb") as f:
+                file_name = self.__torrent_data['name'] + self.__torrent_data['extension']
+                with open(self.__download_dir / file_name, "wb") as f:
                     f.write(completeBytesArray)
 
-                self.completed = True
-            except Exception as e:
-                print(f'[Error] Process has failed writing the file to disk due to error: {e}')
-
+                # Client become leecher in the swarm
+                self.status = DownloadStatus.COMPLETE
+                self.server_conn.upload_command(json.dumps(self.__torrent_data), self.__listen_addr)
+            except:
+                self.status = DownloadStatus.ERROR
+                self.error_message = "Process has failed writing the file to disk"
 
     @staticmethod
     def _assign_piece_distribution_to_seeders(total_piece: int, seeders_count: int) -> List[Tuple[int, int]]:
@@ -88,62 +108,88 @@ class DownloadThread(Thread):
 
         return  pieces_distribution
 
+    def skip_download(self):
+        """
+        Skip the download task
+        """
+        with STATUS_UPDATE_LOCK:
+            self.status = DownloadStatus.SKIPPED
+
+    def is_error(self):
+        """
+        :return: True if status is Error
+        """
+        with STATUS_UPDATE_LOCK:
+            return self.status == DownloadStatus.ERROR
+
+    def is_skip(self):
+        """
+        :return: True if status is Skip
+        """
+        with STATUS_UPDATE_LOCK:
+            return self.status == DownloadStatus.SKIPPED
+
+    def is_downloading(self):
+        """
+        :return: True if status is Downloading
+        """
+        with STATUS_UPDATE_LOCK:
+            return self.status == DownloadStatus.DOWNLOADING
+
     def download_from_peers_helper(self,
                                    seeder_idx: int,
                                    piece_distribution: Tuple[int, int],
-                                   seeder: Tuple[str, int],
+                                   seeder: Address,
                                    segment_list: List[bytearray]):
         # This is where the downloading of the file is handled
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as downloadSocket:
             # Connect to seeder
             downloadSocket.connect(seeder)
             print(f'Prepare to to send torrent to Seeder: {seeder}')
-            downloadSocket.sendall(json.dumps(self.torrent_data).encode())
-            # time.sleep(5)
+            downloadSocket.sendall(json.dumps(self.__torrent_data).encode())
 
             data = downloadSocket.recv(BUFFER_SIZE)
 
             if not data or data.decode() != "OK":
-                print(f'Download from seeder {seeder} failed')
+                with STATUS_UPDATE_LOCK:
+                    self.status = DownloadStatus.ERROR
+                    self.error_message = f'Connect to {seeder} failed'
                 return
 
             start, end = piece_distribution
             corrupted_count = 0
-            while start < end and corrupted_count <= 3 and not self.skipped:
+            while start < end and corrupted_count <= 3 and self.status == DownloadStatus.DOWNLOADING:
                 downloadSocket.sendall(str(start).encode()) # Send the piece index
 
                 data: bytes = downloadSocket.recv(BUFFER_SIZE)
                 retrieved_hash = hashlib.sha1(data).hexdigest()
-                if not data or retrieved_hash not in self.torrent_data['pieces']:
-                    # blue: str =  "\033[1;36m"
-                    # reset: str = "\033[0m"
-                    # print(f"Received data: {blue} {data} {reset}")
-                    # print(f"Piece no.{start} has been corrupted!")
+                if not data or retrieved_hash not in self.__torrent_data['pieces']:
                     corrupted_count += 1
                     if corrupted_count > 3: # error
                         downloadSocket.sendall("STOP".encode())
-                        print(f'[Error] Download unsuccessfully in {seeder_idx} due to maximum corrupted time')
-                        # flag[seeder_idx] = False
+
+                        with STATUS_UPDATE_LOCK:
+                            self.status = DownloadStatus.ERROR
+                            self.error_message = f"Download terminated in seeder {seeder} due to maximum corrupted time"
+
                         return
-                    time.sleep(2)
+                    time.sleep(3)
                     continue # Re:download this piece, due to corruption
-                # TODO: how long to sleep between pieces
-                print(f"Piece no.{start} is received successfully!")
+
+                # print(f"Piece no.{start} is received successfully!")
                 segment_list[seeder_idx].extend(data)
                 # Update bit field
                 with BIT_STR_LOCK:
                     self.bit_field[start] = '1'
-                    self.progress += 1
-
-                    print(f'bit_field = {"".join(self.bit_field)}')
 
                 start += 1
                 time.sleep(0.5)
 
             # Tell the seeder to stop
             downloadSocket.sendall("STOP".encode())
-            if not self.skipped:
-                print("Download thread helper has finished its task!")
-            else:
-                print("Download thread has skipped downloading this segment!")
-            return
+
+    def get_status(self):
+        if self.status != DownloadStatus.COMPLETE:
+            return SwarmStatus.LEECHER
+        else:
+            return SwarmStatus.SEEDER

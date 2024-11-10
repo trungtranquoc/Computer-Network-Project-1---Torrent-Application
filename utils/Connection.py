@@ -1,20 +1,21 @@
 import socket
 from typing import Tuple, List, Union
 import json
-
+from custom import SwarmException, Address
 
 class Connection:
     """
     Client-tracker connection
     """
-    __addr: Tuple[str, int]
+    __addr: Address
     __conn: socket.socket             # Client-tracker socket
     __swarms_info: dict
 
-    def __init__(self, server_addr: Tuple[str, int]):
+    def __init__(self, server_addr: Address):
         self.__addr = server_addr
         self.__rcv_command = None
         self.__conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.__swarms_info = {}
 
     def run(self):
         try:
@@ -23,15 +24,6 @@ class Connection:
             print(f"Connect to server {self.__addr} successfully !")
         except Exception as e:
             raise Exception(e)
-
-    def quit(self):
-        self.__conn.close()
-        print(f"Disconnect from server {self.__addr}")
-
-    def update_swarm(self, swarms: str, pieces: int, progress: int):
-        bit_flag = "".join(["1" if idx > progress else "0" for idx in range(pieces)])
-
-        self.__swarms_info[swarms] = bit_flag
 
     def show_swarms(self):
         """
@@ -45,32 +37,59 @@ class Connection:
 
             print(f"[{idx}] Key: {swarm}\n    Value: {bit_flag}")
 
-    def get_list_of_pieces(self, key: str) -> str:
-        """
-        :param key: hash value of torrent of the swarm
-        :return: bits-string indicating which pieces the client already has in key
-        """
-        return self.__swarms_info[key]
-
-
-    def upload_command(self, torrent_data: str, listen_addr: Tuple[str, int]):
+    def upload_command(self, torrent_data: str, listen_addr: Address) -> int:
         ip, listen_port = listen_addr
         self.__conn.sendall(f"upload::{ip}::{listen_port}::{torrent_data}".encode())
+        swarm_key = self.__conn.recv(1024).decode()          # Receive key
 
-    def download_command(self, torrent_data: str) -> Union[List[Tuple[str, int]], None]:
+        return int(swarm_key)
+
+    def download_command(self, torrent_data: str) -> Tuple[int, List[Address]]:
         """
 
-        :param torrent_data: torrent data including metadata of downloading file.
-        :return: list of address of seeders.
+        :param torrent_data (str): dump value of torrent data dictionary
+        :return: key of swarm and list of seeders
         """
         self.__conn.sendall(f"download::{torrent_data}".encode())
 
         # Receive notification message
         rcv_data = self.__conn.recv(4096).decode()
         if rcv_data == "Error":
-            return None
+            raise SwarmException("Not found swarm in server")
 
-        seeders: List[Tuple[str, int]] = [tuple(s) for s in json.loads(rcv_data)]
-        # print(f'rcv_data: {rcv_data}')
-        # print(f'seeders: {seeders}')
-        return seeders
+        key, seeders_list = rcv_data.split("::")
+        seeders: List[Address] = [tuple(s) for s in json.loads(seeders_list)]
+
+        if len(seeders) == 0:
+            raise SwarmException("No peer in swarm")
+
+        return int(key), seeders
+
+    def download_magnet_link_command(self, swarm_key: str) -> Tuple[dict, List[Address]]:
+        """
+
+        :param swarm_key: key of the interested swarm
+        :return: torrent data and list of seeders
+        """
+        self.__conn.sendall(f"download::key::{swarm_key}".encode())
+
+        # Receive notification message
+        rcv_data = self.__conn.recv(4096).decode()
+        if rcv_data == "Error":
+            raise SwarmException("Not found swarm in server")
+
+        swarm_info: dict = json.loads(rcv_data)
+        seeders: List[Address] = [tuple(s) for s in swarm_info["seeders"]]
+        del swarm_info["seeders"]
+
+        if len(seeders) == 0:
+            raise SwarmException("No peer in swarm")
+
+        return swarm_info, seeders
+
+    def get_address(self):
+        return self.__addr
+
+    def quit(self):
+        self.__conn.close()
+        print(f"Disconnect from server {self.__addr}")

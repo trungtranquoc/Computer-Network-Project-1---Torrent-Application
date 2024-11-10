@@ -69,37 +69,3 @@ def hash_torrent(data: dict) -> int:
     :return:
     """
     return hash(json.dumps(data))
-
-# def test_assembling():
-#     fileInRepo = Path("../Files/test.txt")
-#     piece_list: List = []
-#     with open(fileInRepo, "rb") as f:
-#         while True:
-#             piece = f.read()  # Read in chunks
-#             if not piece:
-#                 break
-#             piece_list.append(piece)
-#
-#     # Test trying to assemble the pieces after splitting them
-#     torrent_path: Path = Path("../Files/test.json")
-#     with open(torrent_path) as tf:
-#         data = json.load(tf)
-#         assembled_data = bytearray()
-#         piece_hashes = data["pieces"]
-#         extension = data["extension"]
-#         for piece in piece_list:
-#             piece_hash = hashlib.sha1(piece).hexdigest()
-#             if piece_hash not in piece_hashes:
-#                 raise Exception("Data corruption detected")
-#             assembled_data.extend(piece)
-#
-#     # Write the assembled data to a new file
-#     output_file_path = Path("../Files/test_reassembled_2" + extension)
-#     with open(output_file_path, "wb") as output_file:
-#         output_file.write(assembled_data)
-
-
-if __name__ == "__main__":
-    # Example usage
-    generate_torrent_file(path=Path("../Files/alice.txt"),
-                          piece_size=4096)
