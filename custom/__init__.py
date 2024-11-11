@@ -1,4 +1,4 @@
 from .error import *
 from .dtype import *
-
-__all__ = ["SwarmException", "Address", "ServerConnectionError"]
+from .help_command import *
+__all__ = ["SwarmException", "Address", "ServerConnectionError", "server_help", "client_help"]

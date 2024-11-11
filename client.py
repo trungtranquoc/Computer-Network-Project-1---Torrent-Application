@@ -8,12 +8,14 @@ from utils import Connection, generate_torrent_file
 from utils.Swarm import Swarm, SeederSwarm
 from utils.threads import DownloadThread, ClientListenThread
 from custom import Address, ServerConnectionError
+from custom import client_help
+
 
 class Client:
     __client_addr: Address
     __listen_addr: Address
     __connections: Dict
-    __folder_path: Union[str , Path]
+    __folder_path: Union[str, Path]
     __listener_thread: ClientListenThread
     __command_line_thread: threading.Thread
     __swarms: Dict[int, Swarm]
@@ -42,12 +44,11 @@ class Client:
             os.makedirs(torrent_folder)
 
     def run(self):
-        self.__listener_thread.start()                          # Start listener thread
+        self.__listener_thread.start()  # Start listener thread
         self.__command_line_thread.start()
 
         # Wait for command_line program to be terminated
         self.__command_line_thread.join()
-
 
     def create_torrent_file(self, file_name: str, server_addr: Address = ("localhost", 25565), piece_size: int = 1024):
         """
@@ -59,7 +60,7 @@ class Client:
         file_path = Path(self.__folder_path) / file_name
         output_dir = self.__folder_path / 'torrents'
 
-        print("-"*33)
+        print("-" * 33)
         try:
             ip_addr, port = server_addr
             torrent_path = generate_torrent_file(file_path, output_dir, ip_addr, port, piece_size)
@@ -77,7 +78,8 @@ class Client:
                 data: dict = json.load(tf)
 
             # Get server connection
-            ip, port = data['tracker'].values()                 # Convert dictionary {"tracker": { "ip": ip_addr, "port": port} to (ip_addr, port)
+            ip, port = data[
+                'tracker'].values()  # Convert dictionary {"tracker": { "ip": ip_addr, "port": port} to (ip_addr, port)
             server_addr = (ip, int(port))
             print(f"Upload file to server {server_addr}...")
             server_conn: Connection = self.__connect_server(server_addr)
@@ -101,7 +103,7 @@ class Client:
         except Exception as e:
             print(f"[ERROR] Can not start upload torrent file due to error: {e}")
 
-        print("-"*33)
+        print("-" * 33)
 
     def skip_progress(self, file_id: int):
         if file_id not in self.__download_tasks.keys():
@@ -162,14 +164,14 @@ class Client:
         print("-" * 33)
 
     def show_directory(self):
-        print("-"*33)
+        print("-" * 33)
         for f in os.listdir(self.__folder_path):
             print(f'-> {f}')
             if os.path.isdir(self.__folder_path / f):
                 for file in os.listdir(self.__folder_path / f):
                     print(f'---> {file}')
 
-        print("-"*33)
+        print("-" * 33)
 
     def show_progress(self):
         print("-" * 33)
@@ -180,9 +182,10 @@ class Client:
                 bit_field = download_task.bit_field
                 progress = bit_field.count('1') / len(bit_field) * 100
                 bit_string = "".join(bit_field)
-                print(f"[{idx+1}] {download_task.file_id}")
+                print(f"[{idx + 1}] {download_task.file_id}")
                 if download_task.is_error():
-                    print(f"    {download_task.status} - {progress:.2f}% - {bit_string} - Error: {download_task.error_message}")
+                    print(
+                        f"    {download_task.status} - {progress:.2f}% - {bit_string} - Error: {download_task.error_message}")
                 else:
                     print(f"    {download_task.status} - {progress:.2f}% - {bit_string}")
         print("-" * 33)
@@ -193,13 +196,13 @@ class Client:
             print("The client has not joined any swarm !")
         else:
             for idx, swarm in enumerate(self.__swarms.values()):
-                print(f"[{idx+1}] {swarm.server_conn.get_address()} - {swarm.file_id} - {swarm.get_status()}")
+                print(f"[{idx + 1}] {swarm.server_conn.get_address()} - {swarm.file_id} - {swarm.get_status()}")
 
         print("-" * 33)
 
     def __download(self, server_conn: Connection, torrent_data: dict, swarm_key: int, seeders: List[Address]):
         if (swarm_key in self.__download_tasks.keys() and not
-            (self.__download_tasks[swarm_key].is_error() or self.__download_tasks[swarm_key].is_skip())):
+        (self.__download_tasks[swarm_key].is_error() or self.__download_tasks[swarm_key].is_skip())):
             raise Exception('Client have already download or is downloading !')
 
         download_task = DownloadThread(file_id=swarm_key, torrent_data=torrent_data, seeders=seeders,
@@ -255,10 +258,13 @@ class Client:
                 self.show_swarms()
             elif len(info) == 1 and info[0] == "quit":
                 break
+            elif len(info) == 1 and info[0] == "help":
+                client_help()
             else:
                 print("[ERROR] Command not found")
 
-        print("Program has been terminate !")
+        print("Program has been terminated!")
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
