@@ -9,8 +9,6 @@ from custom import Address
 from custom import server_help
 
 HOST = "localhost"
-PORT = 1232
-
 
 class Server:
     __addr: Address
@@ -20,8 +18,8 @@ class Server:
     __swarms: dict
     __swarms_lock: threading.Lock
 
-    def __init__(self):
-        self.__addr = (HOST, PORT)
+    def __init__(self, port: int):
+        self.__addr = (HOST, port)
         self.__listener_thread = threading.Thread(target=self._listening_for_connections, daemon=True)
         self.__command_line_thread = threading.Thread(target=self._command_line_program)
 
@@ -175,7 +173,12 @@ class Server:
 
 
 if __name__ == "__main__":
-    server = Server()
+    if len(sys.argv) < 2:
+        port = 1232
+    else:
+        port = int(sys.argv[1])
+
+    server = Server(port=port)
     server.run()
 
     sys.exit()
