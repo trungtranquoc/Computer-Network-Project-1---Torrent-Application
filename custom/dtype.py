@@ -1,3 +1,3 @@
 from typing import Tuple
 
-Address = Tuple[str, int]
+HostAddress = Tuple[str, int]

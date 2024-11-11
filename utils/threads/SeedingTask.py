@@ -4,19 +4,19 @@ from threading import Thread
 from typing import List, Tuple, Union, Dict
 from pathlib import Path
 import sys
-from custom import Address
+from custom import HostAddress
 
 class ClientListenThread(Thread):
     """
     Thread for listening to download request.
     """
     __folder_path: Path
-    __seed_addr: Address
+    __seed_addr: HostAddress
     __listening_socket: socket.socket
     __seeding_socket: List[socket.socket]
     __input_str: str
 
-    def __init__(self, folder_path: Path, addr: Address, client_name: str, daemon: bool = True):
+    def __init__(self, folder_path: Path, addr: HostAddress, client_name: str, daemon: bool = True):
         """
         
         :param folder_path: folder of the client
@@ -52,7 +52,6 @@ class ClientListenThread(Thread):
                 self.print_message(f'Connection with client {leech_addr} established')
                 torrent_dump: str = leech_conn.recv(4096).decode()
                 torrent_dict: Dict = json.loads(torrent_dump)
-                # pprint(torrent_dict)
 
                 self.__seeding_socket.append(leech_conn)
                 seeding_thread = SeedingThread(self.__folder_path,
@@ -68,7 +67,7 @@ class SeedingThread(Thread):
 
     def __init__(self, folder_path: Path, torrent_data: dict, leech_conn: socket.socket):
         super().__init__()
-        # self.__leech_addr: Address = leecher
+        # self.__leech_addr: HostAddress = leecher
         self.__folder_path: Path = folder_path
         self.__file_name: str = torrent_data['name'] + torrent_data['extension']
         self.__file_size: int = torrent_data['size']

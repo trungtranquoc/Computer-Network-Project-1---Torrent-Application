@@ -9,7 +9,7 @@ from pathlib import Path
 from enum import Enum
 from ..Connection import Connection
 from ..Swarm import Swarm, SwarmStatus
-from custom import Address
+from custom import HostAddress
 
 
 BUFFER_SIZE = 4096
@@ -27,9 +27,9 @@ class DownloadThread(Thread, Swarm):
     def __init__(self,
                  file_id: int,
                  torrent_data: dict,
-                 seeders: List[Address],
+                 seeders: List[HostAddress],
                  server_conn: Connection,                       # Notify server to become seeder
-                 listen_addr: Address,                  # Notify server to become seeder
+                 listen_addr: HostAddress,                  # Notify server to become seeder
                  download_dir: Path,
                  daemon: bool = True,
                  ):
@@ -139,7 +139,7 @@ class DownloadThread(Thread, Swarm):
     def download_from_peers_helper(self,
                                    seeder_idx: int,
                                    piece_distribution: Tuple[int, int],
-                                   seeder: Address,
+                                   seeder: HostAddress,
                                    segment_list: List[bytearray]):
         # This is where the downloading of the file is handled
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as downloadSocket:

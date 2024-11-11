@@ -7,14 +7,13 @@ import threading
 from utils import Connection, generate_torrent_file
 from utils.Swarm import Swarm, SeederSwarm
 from utils.threads import DownloadThread, ClientListenThread
-from custom import Address, ServerConnectionError
+from custom import HostAddress, ServerConnectionError
 from custom import client_help
 
-
 class Client:
-    __client_addr: Address
-    __listen_addr: Address
-    __connections: Dict
+    __client_addr: HostAddress
+    __listen_addr: HostAddress
+    __connections: Dict[HostAddress, Connection]
     __folder_path: Union[str, Path]
     __listener_thread: ClientListenThread
     __command_line_thread: threading.Thread
@@ -50,7 +49,9 @@ class Client:
         # Wait for command_line program to be terminated
         self.__command_line_thread.join()
 
-    def create_torrent_file(self, file_name: str, server_addr: Address = ("localhost", 25565), piece_size: int = 1024):
+    def create_torrent_file(self, file_name: str,
+                            server_addr: HostAddress = ("localhost", 1232),
+                            piece_size: int = 1024):
         """
         create torrent file for a sharing file
 
@@ -60,19 +61,15 @@ class Client:
         file_path = Path(self.__folder_path) / file_name
         output_dir = self.__folder_path / 'torrents'
 
-        print("-" * 33)
         try:
-            ip_addr, port = server_addr
-            torrent_path = generate_torrent_file(file_path, output_dir, ip_addr, port, piece_size)
+            torrent_path = generate_torrent_file(file_path, output_dir, server_addr, piece_size)
 
             print(f"[SUCCESSFULLY] New torrent file has been created in {torrent_path} !")
         except Exception as e:
             print(f"[ERROR] Can not create new torrent file due to error: {e}")
 
-        print("-" * 33)
 
     def upload_torrent(self, torrent_file):
-        print("-" * 33)
         try:
             with open(Path(self.__folder_path) / 'torrents' / torrent_file, 'r') as tf:
                 data: dict = json.load(tf)
@@ -103,7 +100,6 @@ class Client:
         except Exception as e:
             print(f"[ERROR] Can not start upload torrent file due to error: {e}")
 
-        print("-" * 33)
 
     def skip_progress(self, file_id: int):
         if file_id not in self.__download_tasks.keys():
@@ -118,7 +114,6 @@ class Client:
             print(f'[SUCCESSFULLY] Skip downloading file with id {file_id}')
 
     def start_download(self, torrent_file: str):
-        print("-" * 33)
         try:
             with open(Path(self.__folder_path) / 'torrents' / torrent_file, 'r') as tf:
                 data: Dict = json.load(tf)
@@ -141,10 +136,8 @@ class Client:
         except Exception as e:
             print(f'[ERROR] Can not start download file due to error: {e}')
             return
-        print("-" * 33)
 
     def start_magnet_link_download(self, magnet_link: str):
-        print("-" * 33)
         ip, port, swarm_key = magnet_link.split('::')
         server_addr = (ip, int(port))
 
@@ -161,20 +154,16 @@ class Client:
         except Exception as e:
             print(f"[ERROR] Can not start download magnet link due to error: {e}")
 
-        print("-" * 33)
 
     def show_directory(self):
-        print("-" * 33)
         for f in os.listdir(self.__folder_path):
             print(f'-> {f}')
             if os.path.isdir(self.__folder_path / f):
                 for file in os.listdir(self.__folder_path / f):
                     print(f'---> {file}')
 
-        print("-" * 33)
 
     def show_progress(self):
-        print("-" * 33)
         if len(self.__download_tasks) == 0:
             print("The client has not yet started any downloading !")
         else:
@@ -188,19 +177,16 @@ class Client:
                         f"    {download_task.status} - {progress:.2f}% - {bit_string} - Error: {download_task.error_message}")
                 else:
                     print(f"    {download_task.status} - {progress:.2f}% - {bit_string}")
-        print("-" * 33)
 
     def show_swarms(self):
-        print("-" * 33)
         if len(self.__swarms) == 0:
             print("The client has not joined any swarm !")
         else:
             for idx, swarm in enumerate(self.__swarms.values()):
                 print(f"[{idx + 1}] {swarm.server_conn.get_address()} - {swarm.file_id} - {swarm.get_status()}")
 
-        print("-" * 33)
 
-    def __download(self, server_conn: Connection, torrent_data: dict, swarm_key: int, seeders: List[Address]):
+    def __download(self, server_conn: Connection, torrent_data: dict, swarm_key: int, seeders: List[HostAddress]):
         if (swarm_key in self.__download_tasks.keys() and not
         (self.__download_tasks[swarm_key].is_error() or self.__download_tasks[swarm_key].is_skip())):
             raise Exception('Client have already download or is downloading !')
@@ -216,7 +202,7 @@ class Client:
 
         download_task.start()
 
-    def __connect_server(self, server_addr: Address):
+    def __connect_server(self, server_addr: HostAddress):
         if server_addr not in self.__connections.keys():
             try:
                 self.__connections[server_addr] = Connection(server_addr)
@@ -233,7 +219,11 @@ class Client:
     def __command_line_program(self):
         while True:
             command = input(f"client_{self.__client_addr[1]}> ")
+            if command == "quit":
+                break
+
             info = command.split()
+            print("-" * 33)
 
             if len(info) == 5 and info[0] == "create" and info[1] == "torrent":
                 server_addr = info[3], int(info[4])
@@ -256,12 +246,12 @@ class Client:
                 self.show_directory()
             elif len(info) == 2 and info[0] == "show" and info[1] == "swarm":
                 self.show_swarms()
-            elif len(info) == 1 and info[0] == "quit":
-                break
             elif len(info) == 1 and info[0] == "help":
                 client_help()
             else:
                 print("[ERROR] Command not found")
+
+            print("-" * 33 + "\n")
 
         print("Program has been terminated!")
 

@@ -1,6 +1,5 @@
 from enum import Enum
 from abc import ABC, abstractmethod
-from typing import Tuple
 from .Connection import Connection
 
 class SwarmStatus(Enum):

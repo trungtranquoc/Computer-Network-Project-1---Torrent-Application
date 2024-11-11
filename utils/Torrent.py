@@ -2,7 +2,7 @@ import hashlib
 from pathlib import Path
 import os
 import json
-from typing import Dict, List, Tuple
+from custom import HostAddress
 
 """
     Use this to create a .torrent(json) file
@@ -11,17 +11,16 @@ from typing import Dict, List, Tuple
 
 def generate_torrent_file(path: Path,
                           output_dir: Path,
-                          ip_addr: str,
-                          port: int,
+                          server_addr: HostAddress,
                           piece_size: int,
                           ) -> Path:
     """
     Generate a .torrent(json) file, save in torrents directory
 
-    :param path:
+    :param path: path to save the torrent file
     :param output_dir:
-    :param ip_addr:
-    :param port:
+    :param ip_addr: Ip address of tracker server
+    :param port: Port of server
     :param piece_size:
     :return:
     """
@@ -29,6 +28,8 @@ def generate_torrent_file(path: Path,
     file_size = os.path.getsize(path)
     file_name = path.stem  # File name without extension
     file_extension = path.suffix  # File extension
+
+    ip_addr, port = server_addr
 
     # Calculate piece hashes
     piece_hashes = []

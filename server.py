@@ -5,14 +5,14 @@ from typing import Tuple, Dict, Union, List
 import sys
 from utils import hash_torrent
 import pprint
-from custom import Address
+from custom import HostAddress
 from custom import server_help
 
 HOST = "localhost"
 
 class Server:
-    __addr: Address
-    __connections: Dict[Address, socket.socket]
+    __addr: HostAddress
+    __connections: Dict[HostAddress, socket.socket]
     __listener_thread: threading.Thread
     __command_line_thread: threading.Thread
     __swarms: dict
@@ -35,7 +35,7 @@ class Server:
         # Only command line thread due to control stop of the program
         self.__command_line_thread.join()
 
-    def add_new_swarm(self, torrent_data: dict, client_addr: Address) -> int:
+    def add_new_swarm(self, torrent_data: dict, client_addr: HostAddress) -> int:
         """
 
         :param torrent_data: json file of torrent data
@@ -61,7 +61,7 @@ class Server:
 
         return key
 
-    def get_swarm(self, key: int) -> Union[List[Address], None]:
+    def get_swarm(self, key: int) -> Union[List[HostAddress], None]:
         """
 
         :param torrent_data: Dictionary of torrent data
@@ -107,7 +107,7 @@ class Server:
                 connect_thread = threading.Thread(target=self._connection, args=(client_socket, addr), daemon=True)
                 connect_thread.start()
 
-    def _connection(self, conn: socket.socket, client_addr: Address):
+    def _connection(self, conn: socket.socket, client_addr: HostAddress):
         client_name = f"{client_addr[0]}:{client_addr[1]}"
 
         while True:

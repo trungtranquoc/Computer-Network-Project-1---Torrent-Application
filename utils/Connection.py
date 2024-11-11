@@ -1,17 +1,17 @@
 import socket
 from typing import Tuple, List, Union
 import json
-from custom import SwarmException, Address
+from custom import SwarmException, HostAddress
 
 class Connection:
     """
     Client-tracker connection
     """
-    __addr: Address
+    __addr: HostAddress
     __conn: socket.socket             # Client-tracker socket
     __swarms_info: dict
 
-    def __init__(self, server_addr: Address):
+    def __init__(self, server_addr: HostAddress):
         self.__addr = server_addr
         self.__rcv_command = None
         self.__conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -37,14 +37,14 @@ class Connection:
 
             print(f"[{idx}] Key: {swarm}\n    Value: {bit_flag}")
 
-    def upload_command(self, torrent_data: str, listen_addr: Address) -> int:
+    def upload_command(self, torrent_data: str, listen_addr: HostAddress) -> int:
         ip, listen_port = listen_addr
         self.__conn.sendall(f"upload::{ip}::{listen_port}::{torrent_data}".encode())
         swarm_key = self.__conn.recv(1024).decode()          # Receive key
 
         return int(swarm_key)
 
-    def download_command(self, torrent_data: str) -> Tuple[int, List[Address]]:
+    def download_command(self, torrent_data: str) -> Tuple[int, List[HostAddress]]:
         """
 
         :param torrent_data (str): dump value of torrent data dictionary
@@ -58,14 +58,14 @@ class Connection:
             raise SwarmException("Not found swarm in server")
 
         key, seeders_list = rcv_data.split("::")
-        seeders: List[Address] = [tuple(s) for s in json.loads(seeders_list)]
+        seeders: List[HostAddress] = [tuple(s) for s in json.loads(seeders_list)]
 
         if len(seeders) == 0:
             raise SwarmException("No peer in swarm")
 
         return int(key), seeders
 
-    def download_magnet_link_command(self, swarm_key: str) -> Tuple[dict, List[Address]]:
+    def download_magnet_link_command(self, swarm_key: str) -> Tuple[dict, List[HostAddress]]:
         """
 
         :param swarm_key: key of the interested swarm
@@ -79,7 +79,7 @@ class Connection:
             raise SwarmException("Not found swarm in server")
 
         swarm_info: dict = json.loads(rcv_data)
-        seeders: List[Address] = [tuple(s) for s in swarm_info["seeders"]]
+        seeders: List[HostAddress] = [tuple(s) for s in swarm_info["seeders"]]
         del swarm_info["seeders"]
 
         if len(seeders) == 0:
@@ -87,7 +87,7 @@ class Connection:
 
         return swarm_info, seeders
 
-    def get_address(self):
+    def get_hostAddress(self):
         return self.__addr
 
     def quit(self):
