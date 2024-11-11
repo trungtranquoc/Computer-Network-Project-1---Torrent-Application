@@ -1,7 +1,7 @@
 import json
 import socket
 import threading
-from typing import Tuple, Dict, Union, List
+from typing import Dict, Union, List
 import sys
 from utils import hash_torrent
 import pprint
@@ -17,11 +17,13 @@ class Server:
     __command_line_thread: threading.Thread
     __swarms: dict
     __swarms_lock: threading.Lock
+    __command_line_lock: threading.Lock
 
     def __init__(self, port: int):
         self.__addr = (HOST, port)
-        self.__listener_thread = threading.Thread(target=self._listening_for_connections, daemon=True)
-        self.__command_line_thread = threading.Thread(target=self._command_line_program)
+        self.__listener_thread = threading.Thread(target=self.__listening_for_connections, daemon=True)
+        self.__command_line_thread = threading.Thread(target=self.__command_line_program)
+        self.__command_line_lock = threading.Lock()
 
         self.__connections = {}
 
@@ -64,7 +66,7 @@ class Server:
     def get_swarm(self, key: int) -> Union[List[HostAddress], None]:
         """
 
-        :param torrent_data: Dictionary of torrent data
+        :param key: key of torrent_data
         :return: none of swarm do not exist, otherwise: none
         """
         with self.__swarms_lock:
@@ -74,7 +76,6 @@ class Server:
                 return self.__swarms[key]["seeders"]  # Return list of seeders
 
     def show_swarm(self):
-        print("-" * 33)
         with self.__swarms_lock:
             if len(self.__swarms) == 0:
                 print("No swarms")
@@ -86,14 +87,23 @@ class Server:
                 if idx < len(self.__swarms) - 1:
                     print("-" * 22)
 
-        print("-" * 33)
+    def __print_message(self, message: str):
+        """
+        Print and restore the input string "client_port" into new line
+        :param message: string to print
+        """
+        with self.__command_line_lock:
+            sys.stdout.write("\033[2K\r")  # Clear the current line
+            print(message)  # Print the received message on a new line
+            sys.stdout.write(f"server_{self.__addr[1]}> ")  # Restore the prompt
+            sys.stdout.flush()
 
-    def _listening_for_connections(self):
+    def __listening_for_connections(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
             server_socket.bind(self.__addr)
             server_socket.listen()
 
-            print(f"[LISTENING] Server is listening on {self.__addr}")
+            self.__print_message(f"[LISTENING] Server is listening on {self.__addr}")
             while True:
                 client_socket, addr = server_socket.accept()
 
@@ -102,12 +112,12 @@ class Server:
                 addr = client_ip, int(client_port)
                 self.__connections[addr] = client_socket
 
-                print(f"[ACCEPTED] Accepted connection from {addr}")
+                self.__print_message(f"[ACCEPTED] Accepted connection from {addr}")
 
-                connect_thread = threading.Thread(target=self._connection, args=(client_socket, addr), daemon=True)
+                connect_thread = threading.Thread(target=self.__connection, args=(client_socket, addr), daemon=True)
                 connect_thread.start()
 
-    def _connection(self, conn: socket.socket, client_addr: HostAddress):
+    def __connection(self, conn: socket.socket, client_addr: HostAddress):
         client_name = f"{client_addr[0]}:{client_addr[1]}"
 
         while True:
@@ -115,59 +125,75 @@ class Server:
             if not command:
                 break
 
-            info = command.split("::")
-            print("-" * 33)
-            print(f"{client_name}> data: {info}")
+            with self.__command_line_lock:
+                # Clear the "server> " command line
+                sys.stdout.write("\033[2K\r")  # Clear the current line
 
-            if len(info) == 4 and info[0] == "upload":
-                ip, port = info[1], info[2]
-                client_addr = (ip, int(port))
+                info = command.split("::")
+                print("-" * 33)
 
-                torrent_data = json.loads(info[3])
-                try:
-                    key = self.add_new_swarm(torrent_data, client_addr)
-                    # Send key of client back to the client
-                    conn.sendall(str(key).encode())
-                except Exception as e:
-                    print(f"[Error] Error when create swarm: {e}")
+                if len(info) == 4 and info[0] == "upload":
+                    print(f"{client_name}: upload torrent")
+                    ip, port = info[1], info[2]
+                    client_addr = (ip, int(port))
 
-            elif len(info) == 2 and info[0] == "download":
-                torrent_data = json.loads(info[1])
-                key = hash_torrent(torrent_data)
-                swarm_lists = self.get_swarm(key)
+                    torrent_data = json.loads(info[3])
+                    try:
+                        key = self.add_new_swarm(torrent_data, client_addr)
+                        # Send key of client back to the client
+                        conn.sendall(str(key).encode())
+                    except Exception as e:
+                        print(f"[Error] Error when create swarm: {e}")
 
-                if swarm_lists is None:
-                    conn.sendall("Error".encode())
+                elif len(info) == 2 and info[0] == "download":
+                    print(f"{client_name}: download file using torrent")
+
+                    torrent_data = json.loads(info[1])
+                    key = hash_torrent(torrent_data)
+                    swarm_lists = self.get_swarm(key)
+
+                    if swarm_lists is None:
+                        conn.sendall("Error".encode())
+                    else:
+                        conn.sendall(f"{key}::{json.dumps(swarm_lists)}".encode())
+                elif len(info) == 3 and info[0] == "download" and info[1] == "key":
+                    print(f"{client_name}: download file using key")
+
+                    key = int(json.loads(info[2]))
+
+                    if key not in self.__swarms.keys():
+                        conn.sendall("Error".encode())
+                    else:
+                        conn.sendall(json.dumps(self.__swarms[key]).encode())
                 else:
-                    conn.sendall(f"{key}::{json.dumps(swarm_lists)}".encode())
-            elif len(info) == 3 and info[0] == "download" and info[1] == "key":
-                key = int(json.loads(info[2]))
+                    print("[ERROR] Unknown command")
 
-                if key not in self.__swarms.keys():
-                    conn.sendall("Error".encode())
-                else:
-                    conn.sendall(json.dumps(self.__swarms[key]).encode())
-            else:
-                print("[ERROR] Unknown command")
+                print("-" * 33 + "\n")
 
-            print("-" * 33)
+                sys.stdout.write(f"server_{self.__addr[1]}> ")  # Restore the prompt
+                sys.stdout.flush()
 
         print(f"Client {client_name} disconnected !")
         conn.close()
 
-    def _command_line_program(self):
+    def __command_line_program(self):
         while True:
-            command = input(f"")
-            info = command.split()
+            command = input(f"server> ")
 
-            if len(info) == 1 and info[0] == "quit":
+            if command == "quit":
                 break
-            elif len(info) == 1 and info[0] == "help":
-                server_help()
-            if len(info) == 2 and info[0] == "show" and info[1] == "swarm":
-                self.show_swarm()
-            else:
-                print("[ERROR] Command not found")
+
+            with self.__command_line_lock:
+                print("-"*33)
+                info = command.split()
+                if len(info) == 1 and info[0] == "help":
+                    server_help()
+                elif len(info) == 2 and info[0] == "show" and info[1] == "swarm":
+                    self.show_swarm()
+                else:
+                    print(f"[ERROR] Command not found: {command}")
+
+                print("-"*33 + "\n")
 
         print("Program has been terminated!")
 

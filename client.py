@@ -5,10 +5,11 @@ from pathlib import Path
 from typing import Dict, Union, List
 import threading
 from utils import Connection, generate_torrent_file
-from utils.Swarm import Swarm, SeederSwarm
+from utils.Swarm import Swarm, SeederSwarm, SwarmStatus
 from utils.threads import DownloadThread, ClientListenThread
-from custom import HostAddress, ServerConnectionError
+from custom import HostAddress, ServerConnectionError, DownloadFileException
 from custom import client_help
+
 
 class Client:
     __client_addr: HostAddress
@@ -19,6 +20,7 @@ class Client:
     __command_line_thread: threading.Thread
     __swarms: Dict[int, Swarm]
     __download_tasks: Dict[int, DownloadThread]
+    __command_line_lock = threading.Lock()
 
     def __init__(self, port: int, listen_port: int):
         # lan_ip = socket.gethostbyname(socket.gethostname())
@@ -32,8 +34,9 @@ class Client:
 
         # Multitasking
         self.__command_line_thread = threading.Thread(target=self.__command_line_program)
-        self.__listener_thread = ClientListenThread(self.__folder_path,
-                                                    addr=self.__listen_addr, client_name=f"client_{port}")
+        self.__listener_thread = ClientListenThread(self.__folder_path, addr=self.__listen_addr,
+                                                    client_name=f"client_{port}",
+                                                    command_line_lock=self.__command_line_lock)
 
         # Case client not exist yet, then we add directory
         if not os.path.exists(self.__folder_path):
@@ -68,7 +71,6 @@ class Client:
         except Exception as e:
             print(f"[ERROR] Can not create new torrent file due to error: {e}")
 
-
     def upload_torrent(self, torrent_file):
         try:
             with open(Path(self.__folder_path) / 'torrents' / torrent_file, 'r') as tf:
@@ -99,7 +101,6 @@ class Client:
             print('[ERROR] Can not open torrent file')
         except Exception as e:
             print(f"[ERROR] Can not start upload torrent file due to error: {e}")
-
 
     def skip_progress(self, file_id: int):
         if file_id not in self.__download_tasks.keys():
@@ -154,14 +155,12 @@ class Client:
         except Exception as e:
             print(f"[ERROR] Can not start download magnet link due to error: {e}")
 
-
     def show_directory(self):
         for f in os.listdir(self.__folder_path):
             print(f'-> {f}')
             if os.path.isdir(self.__folder_path / f):
                 for file in os.listdir(self.__folder_path / f):
                     print(f'---> {file}')
-
 
     def show_progress(self):
         if len(self.__download_tasks) == 0:
@@ -183,13 +182,15 @@ class Client:
             print("The client has not joined any swarm !")
         else:
             for idx, swarm in enumerate(self.__swarms.values()):
-                print(f"[{idx + 1}] {swarm.server_conn.get_address()} - {swarm.file_id} - {swarm.get_status()}")
-
+                print(f"[{idx + 1}] {swarm.server_conn.get_hostAddress()} - {swarm.file_id} - {swarm.get_status()}")
 
     def __download(self, server_conn: Connection, torrent_data: dict, swarm_key: int, seeders: List[HostAddress]):
+        if swarm_key in self.__swarms.keys() and self.__swarms[swarm_key].get_status() == SwarmStatus.SEEDER:
+            raise DownloadFileException('Client is the seeder of the swarm !')
+
         if (swarm_key in self.__download_tasks.keys() and not
         (self.__download_tasks[swarm_key].is_error() or self.__download_tasks[swarm_key].is_skip())):
-            raise Exception('Client have already download or is downloading !')
+            raise DownloadFileException('Client have already download or is downloading !')
 
         download_task = DownloadThread(file_id=swarm_key, torrent_data=torrent_data, seeders=seeders,
                                        server_conn=server_conn, download_dir=self.__folder_path,
@@ -223,35 +224,36 @@ class Client:
                 break
 
             info = command.split()
-            print("-" * 33)
+            with self.__command_line_lock:
+                print("-" * 33)
 
-            if len(info) == 5 and info[0] == "create" and info[1] == "torrent":
-                server_addr = info[3], int(info[4])
-                self.create_torrent_file(file_name=info[2], server_addr=server_addr)
-            elif len(info) == 6 and info[0] == "create" and info[1] == "torrent":
-                server_addr = info[3], int(info[4])
-                piece_size = int(info[5])
-                self.create_torrent_file(file_name=info[2], server_addr=server_addr, piece_size=piece_size)
-            elif len(info) == 2 and info[0] == "upload":
-                self.upload_torrent(torrent_file=info[1])
-            elif len(info) == 2 and info[0] == "download":
-                self.start_download(torrent_file=info[1])
-            elif len(info) == 3 and info[0] == "download" and info[1] == "key":
-                self.start_magnet_link_download(magnet_link=info[2])
-            elif len(info) == 2 and info[0] == "skip":
-                self.skip_progress(int(info[1]))
-            elif len(info) == 2 and info[0] == "show" and info[1] == "progress":
-                self.show_progress()
-            elif len(info) == 2 and info[0] == "show" and info[1] == "directory":
-                self.show_directory()
-            elif len(info) == 2 and info[0] == "show" and info[1] == "swarm":
-                self.show_swarms()
-            elif len(info) == 1 and info[0] == "help":
-                client_help()
-            else:
-                print("[ERROR] Command not found")
+                if len(info) == 5 and info[0] == "create" and info[1] == "torrent":
+                    server_addr = info[3], int(info[4])
+                    self.create_torrent_file(file_name=info[2], server_addr=server_addr)
+                elif len(info) == 6 and info[0] == "create" and info[1] == "torrent":
+                    server_addr = info[3], int(info[4])
+                    piece_size = int(info[5])
+                    self.create_torrent_file(file_name=info[2], server_addr=server_addr, piece_size=piece_size)
+                elif len(info) == 2 and info[0] == "upload":
+                    self.upload_torrent(torrent_file=info[1])
+                elif len(info) == 2 and info[0] == "download":
+                    self.start_download(torrent_file=info[1])
+                elif len(info) == 3 and info[0] == "download" and info[1] == "key":
+                    self.start_magnet_link_download(magnet_link=info[2])
+                elif len(info) == 2 and info[0] == "skip":
+                    self.skip_progress(int(info[1]))
+                elif len(info) == 2 and info[0] == "show" and info[1] == "progress":
+                    self.show_progress()
+                elif len(info) == 2 and info[0] == "show" and info[1] == "directory":
+                    self.show_directory()
+                elif len(info) == 2 and info[0] == "show" and info[1] == "swarm":
+                    self.show_swarms()
+                elif len(info) == 1 and info[0] == "help":
+                    client_help()
+                else:
+                    print("[ERROR] Command not found")
 
-            print("-" * 33 + "\n")
+                print("-" * 33 + "\n")
 
         print("Program has been terminated!")
 

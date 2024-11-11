@@ -1,6 +1,7 @@
 import socket
 import json
-from threading import Thread
+import threading
+from threading import Thread, Lock
 from typing import List, Tuple, Union, Dict
 from pathlib import Path
 import sys
@@ -15,8 +16,10 @@ class ClientListenThread(Thread):
     __listening_socket: socket.socket
     __seeding_socket: List[socket.socket]
     __input_str: str
+    __command_line_lock: Lock
 
-    def __init__(self, folder_path: Path, addr: HostAddress, client_name: str, daemon: bool = True):
+    def __init__(self, folder_path: Path, addr: HostAddress, client_name: str,
+                 command_line_lock: Lock, daemon: bool = True):
         """
         
         :param folder_path: folder of the client
@@ -30,16 +33,18 @@ class ClientListenThread(Thread):
         self.__listening_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__seeding_socket = []
         self.__input_str = client_name
+        self.__command_line_lock = command_line_lock
 
     def print_message(self, message: str):
         """
         Print and restore the input string "client_port" into new line
         :param message: string to print
         """
-        sys.stdout.write("\033[2K\r")  # Clear the current line
-        print(message)  # Print the received message on a new line
-        sys.stdout.write(f"{self.__input_str}> ")  # Restore the prompt
-        sys.stdout.flush()
+        with self.__command_line_lock:
+            sys.stdout.write("\033[2K\r")  # Clear the current line
+            print(message)  # Print the received message on a new line
+            sys.stdout.write(f"{self.__input_str}> ")  # Restore the prompt
+            sys.stdout.flush()
 
 
     def run(self):

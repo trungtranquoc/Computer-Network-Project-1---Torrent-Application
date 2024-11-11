@@ -24,21 +24,14 @@ class DownloadStatus(Enum):
     ERROR = 4
 
 class DownloadThread(Thread, Swarm):
-    def __init__(self,
-                 file_id: int,
-                 torrent_data: dict,
-                 seeders: List[HostAddress],
-                 server_conn: Connection,                       # Notify server to become seeder
-                 listen_addr: HostAddress,                  # Notify server to become seeder
-                 download_dir: Path,
-                 daemon: bool = True,
-                 ):
+    def __init__(self, file_id: int, torrent_data: dict, seeders: List[HostAddress], server_conn: Connection,                       # Notify server to become seeder
+                 listen_addr: HostAddress, download_dir: Path, daemon: bool = True):
         Thread.__init__(self, daemon=daemon)
         Swarm.__init__(self, file_id=file_id, server_conn=server_conn)
         self.__torrent_data = torrent_data
         self.__seeders = seeders
         self.__download_dir = download_dir
-        self.__listen_addr = listen_addr
+        self.__listen_addr = listen_addr        # Notify server to become seeder
 
         self.bit_field = ['0'] * len(self.__torrent_data['pieces'])
         self.status: DownloadStatus = DownloadStatus.INITIAL
@@ -46,10 +39,6 @@ class DownloadThread(Thread, Swarm):
         self.error_message: str = ''
 
     def run(self):
-        if self.status != DownloadStatus.INITIAL:
-            print("File already downloaded !")
-            return
-
         seeders_count = len(self.__seeders)
         total_piece = len(self.__torrent_data['pieces'])
         piece_distribution: List[Tuple[int, int]] = self._assign_piece_distribution_to_seeders(
