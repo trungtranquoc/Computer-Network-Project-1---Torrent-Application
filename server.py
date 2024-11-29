@@ -5,7 +5,7 @@ from typing import Dict, Union, List
 import sys
 from utils import hash_torrent
 import pprint
-from custom import HostAddress
+from custom import HostAddress, MAXSIZE_TORRENT
 from custom import server_help
 
 class Server:
@@ -119,7 +119,7 @@ class Server:
         client_name = f"{client_addr[0]}:{client_addr[1]}"
 
         while True:
-            command = conn.recv(4096).decode()  # Receive command here
+            command = conn.recv(MAXSIZE_TORRENT).decode()  # Receive command here
             if not command:
                 break
 
@@ -166,7 +166,7 @@ class Server:
                 else:
                     print("[ERROR] Unknown command")
 
-                print("-" * 33 + "\n")
+                print("-" * 33)
 
                 sys.stdout.write(f"server_{self.__addr[1]}> ")  # Restore the prompt
                 sys.stdout.flush()
@@ -176,7 +176,7 @@ class Server:
 
     def __command_line_program(self):
         while True:
-            command = input(f"server> ")
+            command = input(f"\nserver_{self.__addr[1]}> ")
 
             if command == "quit":
                 break
@@ -191,7 +191,7 @@ class Server:
                 else:
                     print(f"[ERROR] Command not found: {command}")
 
-                print("-"*33 + "\n")
+                print("-"*33)
 
         print("Program has been terminated!")
 

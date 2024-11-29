@@ -8,7 +8,7 @@ import threading
 from utils import Connection, generate_torrent_file
 from utils.Swarm import Swarm, SeederSwarm, SwarmStatus
 from utils.threads import DownloadThread, ClientListenThread
-from custom import HostAddress, ServerConnectionError, DownloadFileException
+from custom import HostAddress, ServerConnectionError, DownloadFileException, DEFAULT_PIECE_SIZE
 from custom import client_help
 
 
@@ -53,12 +53,13 @@ class Client:
 
     def create_torrent_file(self, file_name: str,
                             server_addr: HostAddress = ("localhost", 1232),
-                            piece_size: int = 1024):
+                            piece_size: int = DEFAULT_PIECE_SIZE):
         """
         create torrent file for a sharing file
 
         :param file_name: name of the file
         :param server_addr: address and port of the server
+        :param piece_size: size of each piece
         """
         file_path = Path(self.__folder_path) / file_name
         output_dir = self.__folder_path / 'torrents'
@@ -218,7 +219,7 @@ class Client:
 
     def __command_line_program(self):
         while True:
-            command = input(f"client_{self.__client_addr[1]}> ")
+            command = input(f"\nclient_{self.__client_addr[1]}> ")
             if command == "quit":
                 break
 
@@ -254,7 +255,7 @@ class Client:
                 else:
                     print("[ERROR] Command not found")
 
-                print("-" * 33 + "\n")
+                print("-" * 33)
 
         print("Program has been terminated!")
 

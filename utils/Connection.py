@@ -1,7 +1,7 @@
 import socket
 from typing import Tuple, List, Union
 import json
-from custom import SwarmException, HostAddress
+from custom import SwarmException, HostAddress, MAXSIZE_TORRENT
 
 class Connection:
     """
@@ -13,7 +13,6 @@ class Connection:
 
     def __init__(self, server_addr: HostAddress):
         self.__addr = server_addr
-        self.__rcv_command = None
         self.__conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__swarms_info = {}
 
@@ -74,7 +73,7 @@ class Connection:
         self.__conn.sendall(f"download::key::{swarm_key}".encode())
 
         # Receive notification message
-        rcv_data = self.__conn.recv(4096).decode()
+        rcv_data = self.__conn.recv(MAXSIZE_TORRENT).decode()
         if rcv_data == "Error":
             raise SwarmException("Not found swarm in server")
 

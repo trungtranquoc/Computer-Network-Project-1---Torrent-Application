@@ -5,7 +5,8 @@ from threading import Thread, Lock
 from typing import List, Tuple, Union, Dict
 from pathlib import Path
 import sys
-from custom import HostAddress
+from custom import HostAddress, MAXSIZE_TORRENT
+
 
 class ClientListenThread(Thread):
     """
@@ -55,7 +56,7 @@ class ClientListenThread(Thread):
             while True:
                 leech_conn, leech_addr = listen_socket.accept()
                 self.print_message(f'Connection with client {leech_addr} established')
-                torrent_dump: str = leech_conn.recv(4096).decode()
+                torrent_dump: str = leech_conn.recv(MAXSIZE_TORRENT).decode()
                 torrent_dict: Dict = json.loads(torrent_dump)
 
                 self.__seeding_socket.append(leech_conn)
@@ -68,8 +69,6 @@ class ClientListenThread(Thread):
 
 
 class SeedingThread(Thread):
-
-
     def __init__(self, folder_path: Path, torrent_data: dict, leech_conn: socket.socket):
         super().__init__()
         # self.__leech_addr: HostAddress = leecher
