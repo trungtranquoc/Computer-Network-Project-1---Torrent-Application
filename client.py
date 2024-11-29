@@ -1,5 +1,6 @@
 import os
 import json
+import socket
 import sys
 from pathlib import Path
 from typing import Dict, Union, List
@@ -22,9 +23,7 @@ class Client:
     __download_tasks: Dict[int, DownloadThread]
     __command_line_lock = threading.Lock()
 
-    def __init__(self, port: int, listen_port: int):
-        # lan_ip = socket.gethostbyname(socket.gethostname())
-        ip = "localhost"
+    def __init__(self, port: int, listen_port: int, ip: str = "localhost"):
         self.__client_addr = (ip, port)
         self.__listen_addr = (ip, listen_port)
         self.__folder_path = Path(os.getcwd()) / f'client_{port}'
@@ -71,7 +70,7 @@ class Client:
         except Exception as e:
             print(f"[ERROR] Can not create new torrent file due to error: {e}")
 
-    def upload_torrent(self, torrent_file):
+    def upload_torrent(self, torrent_file: str):
         try:
             with open(Path(self.__folder_path) / 'torrents' / torrent_file, 'r') as tf:
                 data: dict = json.load(tf)
@@ -250,6 +249,8 @@ class Client:
                     self.show_swarms()
                 elif len(info) == 1 and info[0] == "help":
                     client_help()
+                elif len(info) == 0:
+                    pass
                 else:
                     print("[ERROR] Command not found")
 
@@ -264,9 +265,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Read port number
+    ip_addr = socket.gethostbyname(socket.gethostname())
     port = int(sys.argv[1])
+
     listen_port = int(sys.argv[2])
-    client = Client(port, listen_port)
+    client = Client(port, listen_port, ip_addr)
     client.run()
 
     sys.exit()

@@ -8,8 +8,6 @@ import pprint
 from custom import HostAddress
 from custom import server_help
 
-HOST = "localhost"
-
 class Server:
     __addr: HostAddress
     __connections: Dict[HostAddress, socket.socket]
@@ -19,8 +17,8 @@ class Server:
     __swarms_lock: threading.Lock
     __command_line_lock: threading.Lock
 
-    def __init__(self, port: int):
-        self.__addr = (HOST, port)
+    def __init__(self, port: int, ip: str = "localhost"):
+        self.__addr = (ip, port)
         self.__listener_thread = threading.Thread(target=self.__listening_for_connections, daemon=True)
         self.__command_line_thread = threading.Thread(target=self.__command_line_program)
         self.__command_line_lock = threading.Lock()
@@ -204,7 +202,9 @@ if __name__ == "__main__":
     else:
         port = int(sys.argv[1])
 
-    server = Server(port=port)
+    ip_addr = socket.gethostbyname(socket.gethostname())
+
+    server = Server(port=port, ip=ip_addr)
     server.run()
 
     sys.exit()
