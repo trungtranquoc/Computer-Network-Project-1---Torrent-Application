@@ -45,8 +45,8 @@ class Client:
             os.makedirs(torrent_folder)
 
     def run(self):
-        self.__listener_thread.start()  # Start listener thread
         self.__command_line_thread.start()
+        self.__listener_thread.start()  # Start listener thread
 
         # Wait for command_line program to be terminated
         self.__command_line_thread.join()
@@ -82,6 +82,7 @@ class Client:
             server_addr = (ip, int(port))
             print(f"Upload file to server {server_addr}...")
             server_conn: Connection = self.__connect_server(server_addr)
+
             if server_conn is None:
                 raise Exception("Failed to connect to server")
 

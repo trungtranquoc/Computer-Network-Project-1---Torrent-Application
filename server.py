@@ -29,8 +29,8 @@ class Server:
         self.__swarms_lock = threading.Lock()
 
     def run(self):
-        self.__listener_thread.start()
         self.__command_line_thread.start()
+        self.__listener_thread.start()
 
         # Only command line thread due to control stop of the program
         self.__command_line_thread.join()
@@ -134,14 +134,14 @@ class Server:
                     print(f"{client_name}: upload torrent")
                     ip, port = info[1], info[2]
                     client_addr = (ip, int(port))
-
-                    torrent_data = json.loads(info[3])
                     try:
+                        torrent_data = json.loads(info[3])
                         key = self.add_new_swarm(torrent_data, client_addr)
                         # Send key of client back to the client
                         conn.sendall(str(key).encode())
                     except Exception as e:
                         print(f"[Error] Error when create swarm: {e}")
+                        conn.sendall("".encode())
 
                 elif len(info) == 2 and info[0] == "download":
                     print(f"{client_name}: download file using torrent")

@@ -9,8 +9,7 @@ from pathlib import Path
 from enum import Enum
 from ..Connection import Connection
 from ..Swarm import Swarm, SwarmStatus
-from custom import HostAddress
-
+from custom import HostAddress, MAXSIZE_TORRENT
 
 BUFFER_SIZE = 4096
 BIT_STR_LOCK = threading.Lock()
@@ -149,10 +148,12 @@ class DownloadThread(Thread, Swarm):
             while start < end and corrupted_count <= 3 and self.status == DownloadStatus.DOWNLOADING:
                 downloadSocket.sendall(str(start).encode()) # Send the piece index
 
-                data: bytes = downloadSocket.recv(BUFFER_SIZE)
+                data: bytes = downloadSocket.recv(MAXSIZE_TORRENT)
                 retrieved_hash = hashlib.sha1(data).hexdigest()
+
                 if not data or retrieved_hash not in self.__torrent_data['pieces']:
                     corrupted_count += 1
+
                     if corrupted_count > 3: # error
                         downloadSocket.sendall("STOP".encode())
 
@@ -171,7 +172,7 @@ class DownloadThread(Thread, Swarm):
                     self.bit_field[start] = '1'
 
                 start += 1
-                time.sleep(0.5)
+                time.sleep(1)
 
             # Tell the seeder to stop
             downloadSocket.sendall("STOP".encode())

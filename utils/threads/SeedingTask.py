@@ -36,7 +36,7 @@ class ClientListenThread(Thread):
         self.__input_str = client_name
         self.__command_line_lock = command_line_lock
 
-    def print_message(self, message: str):
+    def __print_message(self, message: str):
         """
         Print and restore the input string "client_port" into new line
         :param message: string to print
@@ -52,16 +52,16 @@ class ClientListenThread(Thread):
         with self.__listening_socket as listen_socket:
             listen_socket.bind(self.__seed_addr)
             listen_socket.listen(5)
-            self.print_message(f'Starting listening at {self.__seed_addr} !')
+            self.__print_message(f'Starting listening at {self.__seed_addr} !')
+
             while True:
                 leech_conn, leech_addr = listen_socket.accept()
-                self.print_message(f'Connection with client {leech_addr} established')
+                self.__print_message(f'Connection with client {leech_addr} established')
                 torrent_dump: str = leech_conn.recv(MAXSIZE_TORRENT).decode()
                 torrent_dict: Dict = json.loads(torrent_dump)
 
                 self.__seeding_socket.append(leech_conn)
                 seeding_thread = SeedingThread(self.__folder_path,
-                                               # leecher=leech_addr,
                                                torrent_data=torrent_dict,
                                                leech_conn=leech_conn)
                 seeding_thread.daemon = True
