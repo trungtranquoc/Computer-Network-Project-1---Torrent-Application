@@ -66,7 +66,6 @@ class NetworkPage(Frame):
     def __connect_server(self):
         ConnectServerWindow(self)
 
-
 class SwarmFrame(Frame):
     def __init__(self, parent, swarm: dict):
         super().__init__(parent, pady=2, bg="white")
@@ -135,6 +134,7 @@ class ConnectServerWindow(Toplevel):
 
     def __connect(self):
         self.parent.client.connect_server((self.server_ip.get(), int(self.server_port.get())))
+        self.parent.update()
         self.__update()
 
 

@@ -13,8 +13,6 @@ if __name__ == "__main__":
     client.daemon = True    # terminate when GUI Thread end
     client.start()  # No command line mode
 
-    print("Come here")
-
     app = App(client)
     app.mainloop()
 
