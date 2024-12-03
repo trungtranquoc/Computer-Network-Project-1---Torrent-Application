@@ -118,6 +118,20 @@ class Server:
     def __connection(self, conn: socket.socket, client_addr: HostAddress):
         client_name = f"{client_addr[0]}:{client_addr[1]}"
 
+        try:
+            rcv_data = conn.recv(1024).decode()
+            listen_ip, listen_port = rcv_data.split("::")
+            listen_addr = (listen_ip, int(listen_port))                 # Use for remove user from swarm after disconnection
+            print(f"Listen address: {listen_addr}")
+
+            conn.sendall('OK'.encode())
+        except Exception as e:
+            print(f"[ERROR] Fail for request listener address due to error: {e}")
+            conn.sendall(''.encode())
+            conn.close()
+
+            return
+
         while True:
             command = conn.recv(MAXSIZE_TORRENT).decode()  # Receive command here
             if not command:
@@ -130,13 +144,10 @@ class Server:
                 info = command.split("::")
                 print("-" * 33)
 
-                if len(info) == 4 and info[0] == "upload":
-                    print(f"{client_name}: upload torrent")
-                    ip, port = info[1], info[2]
-                    client_addr = (ip, int(port))
+                if len(info) == 2 and info[0] == "upload":
                     try:
-                        torrent_data = json.loads(info[3])
-                        key = self.add_new_swarm(torrent_data, client_addr)
+                        torrent_data = json.loads(info[1])
+                        key = self.add_new_swarm(torrent_data, listen_addr)
                         # Send key of client back to the client
                         conn.sendall(str(key).encode())
                     except Exception as e:
@@ -154,6 +165,7 @@ class Server:
                         conn.sendall("Error".encode())
                     else:
                         conn.sendall(f"{key}::{json.dumps(swarm_lists)}".encode())
+
                 elif len(info) == 3 and info[0] == "download" and info[1] == "key":
                     print(f"{client_name}: download file using key")
 
@@ -163,6 +175,26 @@ class Server:
                         conn.sendall("Error".encode())
                     else:
                         conn.sendall(json.dumps(self.__swarms[key]).encode())
+
+                elif len(info) == 1 and info[0] == "get_swarms":
+                    print(f"{client_name}: request swarm list")
+                    data = []   # Return list data
+                    swarm_info_data = {}
+
+                    try:
+                        for key in self.__swarms.keys():
+                            swarm_info_data["size"] = self.__swarms[key]["size"]
+                            swarm_info_data["key"] = key
+                            swarm_info_data["seeders"] = len(self.__swarms[key]["seeders"])
+                            swarm_info_data["name"] = self.__swarms[key]["name"] + self.__swarms[key]["extension"]
+
+                            data.append(swarm_info_data)
+                            swarm_info_data = {}
+
+                        conn.sendall(json.dumps(data).encode())
+                    except Exception as e:
+                        conn.sendall("Error".encode())
+
                 else:
                     print("[ERROR] Unknown command")
 
@@ -172,7 +204,17 @@ class Server:
                 sys.stdout.flush()
 
         print(f"Client {client_name} disconnected !")
+        # Remove this client from seeders list
+        self.__remove_seeder(listen_addr)
+
         conn.close()
+
+    def __remove_seeder(self, listen_addr: HostAddress) -> None:
+        print('Update swarm seeders...')
+
+        for swarm_key in self.__swarms.keys():
+            if listen_addr in self.__swarms[swarm_key]["seeders"]:
+                self.__swarms[swarm_key]["seeders"].remove(listen_addr)
 
     def __command_line_program(self):
         while True:

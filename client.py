@@ -3,16 +3,18 @@ import json
 import socket
 import sys
 from pathlib import Path
-from typing import Dict, Union, List
+from threading import Thread
+from typing import Dict, Union, List, Tuple
 import threading
 from utils import Connection, generate_torrent_file
 from utils.Swarm import Swarm, SeederSwarm, SwarmStatus
 from utils.threads import DownloadThread, ClientListenThread
-from custom import HostAddress, ServerConnectionError, DownloadFileException, DEFAULT_PIECE_SIZE
+from custom import (HostAddress, ServerConnectionError, DownloadFileException,
+                    DEFAULT_PIECE_SIZE)
 from custom import client_help
 
 
-class Client:
+class Client(Thread):
     __client_addr: HostAddress
     __listen_addr: HostAddress
     __connections: Dict[HostAddress, Connection]
@@ -24,6 +26,7 @@ class Client:
     __command_line_lock = threading.Lock()
 
     def __init__(self, port: int, listen_port: int, ip: str = "localhost"):
+        super().__init__()
         self.__client_addr = (ip, port)
         self.__listen_addr = (ip, listen_port)
         self.__folder_path = Path(os.getcwd()) / f'client_{port}'
@@ -51,6 +54,9 @@ class Client:
         # Wait for command_line program to be terminated
         self.__command_line_thread.join()
 
+    def get_ip_addr(self):
+        return self.__client_addr
+
     def create_torrent_file(self, file_name: str,
                             server_addr: HostAddress = ("localhost", 1232),
                             piece_size: int = DEFAULT_PIECE_SIZE):
@@ -63,6 +69,8 @@ class Client:
         """
         file_path = Path(self.__folder_path) / file_name
         output_dir = self.__folder_path / 'torrents'
+
+        print(f"\nCreate torrent file {file_name} that connect to tracker {server_addr}...")
 
         try:
             torrent_path = generate_torrent_file(file_path, output_dir, server_addr, piece_size)
@@ -77,8 +85,7 @@ class Client:
                 data: dict = json.load(tf)
 
             # Get server connection
-            ip, port = data[
-                'tracker'].values()  # Convert dictionary {"tracker": { "ip": ip_addr, "port": port} to (ip_addr, port)
+            ip, port = data['tracker'].values()  # Convert dictionary {"tracker": { "ip": ip_addr, "port": port} to (ip_addr, port)
             server_addr = (ip, int(port))
             print(f"Upload file to server {server_addr}...")
             server_conn: Connection = self.__connect_server(server_addr)
@@ -87,7 +94,7 @@ class Client:
                 raise Exception("Failed to connect to server")
 
             # Send data
-            swarm_key = server_conn.upload_command(json.dumps(data), self.__listen_addr)
+            swarm_key = server_conn.upload_command(json.dumps(data))
 
             if swarm_key in self.__swarms.keys():
                 raise Exception(f'Client already in this swarm ! Swarm key: {swarm_key}')
@@ -104,6 +111,8 @@ class Client:
             print(f"[ERROR] Can not start upload torrent file due to error: {e}")
 
     def skip_progress(self, file_id: int):
+        print(f"\nSkip downloading file {file_id}...")
+
         if file_id not in self.__download_tasks.keys():
             print('[ERROR] Can not find process')
             return
@@ -116,6 +125,8 @@ class Client:
             print(f'[SUCCESSFULLY] Skip downloading file with id {file_id}')
 
     def start_download(self, torrent_file: str):
+        print(f"\nStart downloading file {torrent_file}...")
+
         try:
             with open(Path(self.__folder_path) / 'torrents' / torrent_file, 'r') as tf:
                 data: Dict = json.load(tf)
@@ -143,7 +154,8 @@ class Client:
         ip, port, swarm_key = magnet_link.split('::')
         server_addr = (ip, int(port))
 
-        print(f"Download file from server {server_addr}")
+        print(f"Start downloading file {swarm_key} from server {server_addr}...")
+
         server_conn: Connection = self.__connect_server(server_addr)
 
         # Send data
@@ -156,14 +168,26 @@ class Client:
         except Exception as e:
             print(f"[ERROR] Can not start download magnet link due to error: {e}")
 
-    def show_directory(self):
+    def show_directory(self) -> Tuple[List[str], List[str]]:
+        files: List[str] = []
+        torrent_files: List[str] = []
+
+        print(f"\nShow directory...")
+
         for f in os.listdir(self.__folder_path):
             print(f'-> {f}')
+
+            if f != "torrents":
+                files.append(f)
+
             if os.path.isdir(self.__folder_path / f):
                 for file in os.listdir(self.__folder_path / f):
                     print(f'---> {file}')
+                    torrent_files.append(file)
 
-    def show_progress(self):
+        return files, torrent_files
+
+    def show_progress(self) -> List[DownloadThread]:
         if len(self.__download_tasks) == 0:
             print("The client has not yet started any downloading !")
         else:
@@ -178,12 +202,68 @@ class Client:
                 else:
                     print(f"    {download_task.status} - {progress:.2f}% - {bit_string}")
 
+        return list(self.__download_tasks.values())
+
     def show_swarms(self):
+        print("\nShow swarm...")
+
         if len(self.__swarms) == 0:
             print("The client has not joined any swarm !")
         else:
             for idx, swarm in enumerate(self.__swarms.values()):
                 print(f"[{idx + 1}] {swarm.server_conn.get_hostAddress()} - {swarm.file_id} - {swarm.get_status()}")
+
+    def get_all_swarms(self) -> List[dict]:
+        """
+        Return all swarms of all connected server
+
+        :return: each swarm include data:
+        - tracker: server ip address and port.
+        - key: swarm key in tracked by that server.
+        - name: name of the file in the swarm.
+        - size: size of the file.
+        - seeders: number of seeders available in that swarm.
+        """
+        swarm_data: List[dict] = []
+
+        print("\nLoad swarms information from all connected servers...")
+
+        if not self.__connections.keys():
+            print("The client has not yet connect to any server !")
+
+        try:
+            for server_conn in self.__connections.values():
+                swarm_data  += server_conn.get_swarms()
+
+            swarm_data  = [swarm | {'no': idx+1} for idx, swarm in enumerate(swarm_data)]
+            for swarm in swarm_data:
+                print(f"[{swarm['no']}] - {swarm['tracker']} - {swarm['key']} - {swarm['name']} - {swarm['size']} - {swarm['seeders']}")
+            return swarm_data
+        except Exception as e:
+            print(f"[ERROR] Can not retrieve swarms due to error: {e}")
+
+    def get_all_servers(self) -> List[HostAddress]:
+        """
+
+        :return: All connecting servers to this peer
+        """
+        return [server_conn.get_hostAddress() for server_conn in self.__connections.values()]
+
+    def connect_server(self, server_addr: HostAddress) -> Connection:
+        """
+
+        :param server_addr: Ip address of server
+        :return: Connection to server
+        """
+        return self.__connect_server(server_addr)
+
+    def get_download_thread(self, file_id: int) -> DownloadThread:
+        """
+
+        :param file_id: file_id of the downloading file
+        :return: DownloadThread of the file
+        """
+        return self.__download_tasks[file_id]
 
     def __download(self, server_conn: Connection, torrent_data: dict, swarm_key: int, seeders: List[HostAddress]):
         if swarm_key in self.__swarms.keys() and self.__swarms[swarm_key].get_status() == SwarmStatus.SEEDER:
@@ -207,7 +287,7 @@ class Client:
     def __connect_server(self, server_addr: HostAddress):
         if server_addr not in self.__connections.keys():
             try:
-                self.__connections[server_addr] = Connection(server_addr)
+                self.__connections[server_addr] = Connection(server_addr, self.__listen_addr)
                 self.__connections[server_addr].run()
             except Exception as e:
                 print(f"Can not connect to server {server_addr} due to error: {e}")
@@ -221,6 +301,7 @@ class Client:
     def __command_line_program(self):
         while True:
             command = input(f"\nclient_{self.__client_addr[1]}> ")
+
             if command == "quit":
                 break
 
@@ -249,6 +330,8 @@ class Client:
                     self.show_directory()
                 elif len(info) == 2 and info[0] == "show" and info[1] == "swarm":
                     self.show_swarms()
+                elif len(info) == 3 and info[0] == "show" and info[1] == "server" and info[2] == "swarm":
+                    self.get_all_swarms()
                 elif len(info) == 1 and info[0] == "help":
                     client_help()
                 elif len(info) == 0:
@@ -272,6 +355,9 @@ if __name__ == "__main__":
 
     listen_port = int(sys.argv[2])
     client = Client(port, listen_port, ip_addr)
-    client.run()
+    client.start()
+
+    # Wait for client to end
+    client.join()
 
     sys.exit()

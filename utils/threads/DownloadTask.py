@@ -36,6 +36,7 @@ class DownloadThread(Thread, Swarm):
         self.status: DownloadStatus = DownloadStatus.INITIAL
         self.skipped = False
         self.error_message: str = ''
+        self.file_name = self.__torrent_data['name'] + self.__torrent_data['extension']
 
     def run(self):
         seeders_count = len(self.__seeders)
@@ -70,13 +71,12 @@ class DownloadThread(Thread, Swarm):
             for idx, segment in enumerate(segment_list):
                 completeBytesArray.extend(segment)
             try:
-                file_name = self.__torrent_data['name'] + self.__torrent_data['extension']
-                with open(self.__download_dir / file_name, "wb") as f:
+                with open(self.__download_dir / self.file_name, "wb") as f:
                     f.write(completeBytesArray)
 
                 # Client become leecher in the swarm
                 self.status = DownloadStatus.COMPLETE
-                self.server_conn.upload_command(json.dumps(self.__torrent_data), self.__listen_addr)
+                self.server_conn.upload_command(json.dumps(self.__torrent_data))
             except:
                 self.status = DownloadStatus.ERROR
                 self.error_message = "Process has failed writing the file to disk"

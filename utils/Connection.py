@@ -1,7 +1,8 @@
 import socket
 from typing import Tuple, List, Union
 import json
-from custom import SwarmException, HostAddress, MAXSIZE_TORRENT
+from custom import SwarmException, HostAddress, MAXSIZE_TORRENT, ServerConnectionError
+
 
 class Connection:
     """
@@ -10,19 +11,23 @@ class Connection:
     __addr: HostAddress
     __conn: socket.socket             # Client-tracker socket
     __swarms_info: dict
+    __listen_addr: HostAddress
 
-    def __init__(self, server_addr: HostAddress):
+    def __init__(self, server_addr: HostAddress, listen_addr: HostAddress):
         self.__addr = server_addr
         self.__conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.__swarms_info = {}
+        self.__listen_addr = listen_addr
 
     def run(self):
-        try:
-            self.__conn.connect(self.__addr)
+        self.__conn.connect(self.__addr)
+        print(f"Connect to server {self.__addr} successfully !")
 
-            print(f"Connect to server {self.__addr} successfully !")
-        except Exception as e:
-            raise Exception(e)
+        self.__conn.sendall(f"{self.__listen_addr[0]}::{self.__listen_addr[1]}".encode())
+        server_verify_message = self.__conn.recv(1024).decode()
+
+        if server_verify_message != 'OK':
+            raise ServerConnectionError("Connection failed !")
 
     def show_swarms(self):
         """
@@ -36,9 +41,8 @@ class Connection:
 
             print(f"[{idx}] Key: {swarm}\n    Value: {bit_flag}")
 
-    def upload_command(self, torrent_data: str, listen_addr: HostAddress) -> int:
-        ip, listen_port = listen_addr
-        self.__conn.sendall(f"upload::{ip}::{listen_port}::{torrent_data}".encode())
+    def upload_command(self, torrent_data: str) -> int:
+        self.__conn.sendall(f"upload::{torrent_data}".encode())
         swarm_key = self.__conn.recv(1024).decode()          # Receive key
 
         return int(swarm_key)
@@ -74,6 +78,7 @@ class Connection:
 
         # Receive notification message
         rcv_data = self.__conn.recv(MAXSIZE_TORRENT).decode()
+
         if rcv_data == "Error":
             raise SwarmException("Not found swarm in server")
 
@@ -86,7 +91,20 @@ class Connection:
 
         return swarm_info, seeders
 
-    def get_hostAddress(self):
+    def get_swarms(self) -> List[dict]:
+        """
+
+        :return: List of swarm in this connected server. The data for each swarm including:
+        """
+        self.__conn.sendall("get_swarms".encode())
+        rcv_data = self.__conn.recv(MAXSIZE_TORRENT).decode()
+
+        if rcv_data == "Error":
+            return []
+
+        return [data | {"tracker": self.__addr} for data in json.loads(rcv_data)]
+
+    def get_hostAddress(self) -> HostAddress:
         return self.__addr
 
     def quit(self):
