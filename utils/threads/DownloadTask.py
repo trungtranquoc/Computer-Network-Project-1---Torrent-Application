@@ -37,6 +37,9 @@ class DownloadThread(Thread, Swarm):
         self.skipped = False
         self.error_message: str = ''
         self.file_name = self.__torrent_data['name'] + self.__torrent_data['extension']
+        
+        self.start_time = None
+        self.end_time = None
 
     def run(self):
         seeders_count = len(self.__seeders)
@@ -45,6 +48,9 @@ class DownloadThread(Thread, Swarm):
             total_piece=total_piece,
             seeders_count=seeders_count
         )
+
+        # start the counting time
+        self.start_time = time.time()
 
         segment_list: List[bytearray] = [bytearray() for _ in range(len(self.__seeders))]
 
@@ -59,6 +65,9 @@ class DownloadThread(Thread, Swarm):
         # Wait for all download task complete
         for i in range(seeders_count):
             download_threads[i].join()
+
+        # Record the end time
+        self.end_time = time.time()
 
         if self.status != DownloadStatus.DOWNLOADING:
             return
@@ -80,6 +89,20 @@ class DownloadThread(Thread, Swarm):
             except:
                 self.status = DownloadStatus.ERROR
                 self.error_message = "Process has failed writing the file to disk"
+
+    def get_download_rate(self):
+        """
+
+        :return: current download rate. Determine by total size of available pieces / download time
+        """
+        pieces = len(list(filter(lambda x: x == '1', self.bit_field)))
+
+        if self.status == DownloadStatus.DOWNLOADING:
+            return (time.time() - self.start_time) / pieces * self.__torrent_data['piece_size']
+        elif self.status == DownloadStatus.COMPLETE:
+            return (self.end_time - self.start_time) / pieces * self.__torrent_data['piece_size']
+        else:
+            return 0
 
     @staticmethod
     def _assign_piece_distribution_to_seeders(total_piece: int, seeders_count: int) -> List[Tuple[int, int]]:

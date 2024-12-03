@@ -38,7 +38,7 @@ status_color = {
     DownloadStatus.DOWNLOADING: "black",
     DownloadStatus.COMPLETE: "green",
     DownloadStatus.ERROR: "red",
-    DownloadStatus.SKIPPED: "gray"
+    DownloadStatus.SKIPPED: "red"
 }
 
 class DownloadingFrame(Frame):
@@ -52,15 +52,17 @@ class DownloadingFrame(Frame):
         self.status = download_task.status
         self.progress = None
         self.status_label = Label(self, text=str(self.status), fg=status_color[self.status], bg='white')
+        self.download_rate = Label(self, text=f"Download rate: {int(download_task.get_download_rate())} B/s", fg=status_color[self.status], bg='white')
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
         Label(self, text=f"{self.server_addr} - {self.key}", font=('Arial', 8), fg='black', bg='white').grid(row=0, column=0, sticky="w")
-        Label(self, text=self.file_name, font=('Arial', 12, 'bold'), fg='#0388B4', bg='white').grid(row=1, column=0, sticky="w", pady=5)
-        Button(self, text="Skip", font=('Arial', 9), fg='#0388B4', bg='white', command=self.skip_download).grid(row=1, column=1, sticky="e", ipadx=8)
+        Label(self, text=self.file_name, font=('Arial', 15, 'bold'), fg='#0388B4', bg='white').grid(row=1, column=0, rowspan=2, sticky="nws", pady=5)
+        Button(self, text="Skip", font=('Arial', 9), fg='#0388B4', bg='white', command=self.skip_download).grid(row=2, column=1, sticky="e", ipadx=8, pady=4)
 
         self.status_label.grid(row=0, column=1, sticky='e')
+        self.download_rate.grid(row=1, column=1, sticky='e')
 
     def auto_update(self) -> None:
         """
@@ -78,10 +80,6 @@ class DownloadingFrame(Frame):
         """
         Redraw the progress bar and status
         """
-        # if self.progress is not None:
-        #     self.progress.destroy()
-        #     self.status_label.destroy()
-
         download_task = self.parent.client.get_download_thread(self.key)
         
         self.bit_string = download_task.bit_field
@@ -89,14 +87,18 @@ class DownloadingFrame(Frame):
 
         self.draw_progress()
         self.status_label.grid_forget()
+        self.download_rate.grid_forget()
+
         self.status_label = Label(self, text=str(self.status), fg=status_color[self.status], bg='white')
+        self.download_rate = Label(self, text=f"Download rate: {int(download_task.get_download_rate())} B/s", fg=status_color[self.status], bg='white')
         self.status_label.grid(row=0, column=1, sticky='e')
+        self.download_rate.grid(row=1, column=1, sticky='e')
 
     def draw_progress(self):
         self.update_idletasks()
 
         self.progress = ProgressBar(self, self.bit_string)
-        self.progress.grid(row=2, column=0, columnspan=2, sticky="ew")
+        self.progress.grid(row=3, column=0, columnspan=2, sticky="ew")
         self.progress.draw(self.winfo_width())
 
 class ProgressBar(Canvas):
