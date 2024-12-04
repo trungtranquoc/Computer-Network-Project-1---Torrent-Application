@@ -3,7 +3,7 @@ from typing import Tuple
 from custom import HostAddress
 
 from client import Client
-from utils.Swarm import Swarm
+from utils.Swarm import Swarm, SwarmStatus
 
 
 class SwarmPage(Frame):
@@ -12,7 +12,7 @@ class SwarmPage(Frame):
         self.controller = controller
         self.client = client
 
-        page_name = Label(self, text="Local swarm page", font=("Arial", 18), fg="#0388B4")
+        page_name = Label(self, text="Local Swarms Page", font=("Arial", 18, "bold"), fg="#0388B4")
         page_name.grid_columnconfigure(0, weight=1)
         page_name.grid_rowconfigure(0, weight=1)
         page_name.grid(row=0, column=0, columnspan=6, sticky="ew")
@@ -55,7 +55,12 @@ class SwarmPage(Frame):
         swarm_frames = [ClientSwarmFrame(self, swarm, idx) for idx, swarm in enumerate(swarms)]
 
         for idx, swarm_frame in enumerate(swarm_frames):
-            swarm_frame.grid(row=idx+3, column=0, columnspan=4, sticky="ew", pady=3)
+            swarm_frame.grid(row=idx+3, column=0, columnspan=4, sticky="ew")
+
+status_color = {
+    SwarmStatus.SEEDER: "green",
+    SwarmStatus.LEECHER: "gray"
+}
 
 class ClientSwarmFrame(Frame):
     def __init__(self, parent, swarm: Swarm, idx: int):
@@ -73,11 +78,13 @@ class ClientSwarmFrame(Frame):
         self.grid_columnconfigure(3, minsize=200)
         self.grid_columnconfigure(4, minsize=100)
 
-        Label(self, text=self.idx, font=("Arial", 8), bg="white", fg="black").grid(column=0, row=0, sticky="ew")
-        Label(self, text=self.file_name, font=("Arial", 8), bg="white", fg="black").grid(column=1, row=0, sticky="w")
-        Label(self, text=str(self.server_addr), font=("Arial", 8), bg="white", fg="black").grid(column=2, row=0, sticky="w")
-        Label(self, text=self.key, font=("Arial", 8), bg="white", fg="black").grid(column=3, row=0, sticky="w")
-        Label(self, text=self.status, font=("Arial", 8), bg="white", fg="black").grid(column=4, row=0, sticky="w")
+        Label(self, text=self.idx, font=("Arial", 8), bg="white", fg="black").grid(column=0, row=0, sticky="news")
+        Label(self, text=self.file_name, font=("Arial", 8), bg="white", fg="black").grid(column=1, row=0, sticky="w", ipady=3)
+        Label(self, text=str(self.server_addr), font=("Arial", 8), bg="white", fg="black").grid(column=2, row=0, sticky="nws")
+        Label(self, text=self.key, font=("Arial", 8), bg="white", fg="black").grid(column=3, row=0, sticky="nws")
+        Label(self, text=self.status, font=("Arial", 8), bg="white", fg=status_color[self.status]).grid(
+            column=4, row=0, sticky="nws"
+        )
 
         Canvas(self, height=2, bg="#0388B4", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=7,
                                                                             sticky="ew")

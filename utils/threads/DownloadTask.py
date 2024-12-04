@@ -99,9 +99,9 @@ class DownloadThread(Thread, Swarm):
         pieces = len(list(filter(lambda x: x == '1', self.bit_field)))
 
         if self.status == DownloadStatus.DOWNLOADING:
-            return (time.time() - self.start_time) / pieces * self.__torrent_data['piece_size']
+            return  pieces * self.__torrent_data['piece_size'] / (time.time() - self.start_time)
         elif self.status == DownloadStatus.COMPLETE:
-            return (self.end_time - self.start_time) / pieces * self.__torrent_data['piece_size']
+            return pieces * self.__torrent_data['piece_size'] / (self.end_time - self.start_time)
         else:
             return 0
 

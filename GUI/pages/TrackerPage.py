@@ -10,7 +10,7 @@ class NetworkPage(Frame):
         self.controller = controller
         self.client = client
 
-        page_name = Label(self, text="Server swarm page", font=("Arial", 18), fg="#0388B4")
+        page_name = Label(self, text="Server Swarms Page", font=("Arial", 18, "bold"), fg="#0388B4")
         page_name.grid_columnconfigure(0, weight=1)
         page_name.grid_rowconfigure(0, weight=1)
         page_name.grid(row=0, column=0, columnspan=6, sticky="ew")
@@ -23,21 +23,22 @@ class NetworkPage(Frame):
         self.grid_columnconfigure(5, weight=1)
 
         # Button
-        self.update_button = Button(self, text="Update", command=self.update,
-                                    bg="white", fg="#0388B4", font=("Arial", 10))
-        self.connect_button = Button(self, text="Connect server", command=self.__connect_server,
-                                    bg="white", fg="#0388B4", font=("Arial", 10))
-        self.update_button.grid(column=4, row=1, columnspan=2, sticky="ew", pady=2, padx=2)
-        self.connect_button.grid(column=2, row=1, columnspan=2, sticky="ew", pady=2, padx=2)
+        Button(self, text="Update", command=self.update,
+                                    bg="white", fg="#0388B4", font=("Arial", 10)).grid(column=4, row=1, columnspan=2, sticky="ew", pady=2, padx=2)
+        Button(self, text="Connect server", command=self.__connect_server,
+                                    bg="white", fg="#0388B4", font=("Arial", 10)).grid(column=2, row=1, columnspan=2, sticky="ew", pady=2, padx=2)
+        Button(self, text="Download using magnet link", command=self.__download_magnet_link,
+                                    bg="white", fg="#0388B4", font=("Arial", 10)).grid(column=0, row=1, columnspan=2, sticky="ew", pady=2, padx=2)
+
 
         # Header for table
         header = Frame(self, bg="#0388B4")
         header.grid(row=2, column=0, columnspan=7, sticky="ew")
 
         header.grid_columnconfigure(0, minsize=30)
-        header.grid_columnconfigure(1, minsize=150)
-        header.grid_columnconfigure(2, minsize=200)
-        header.grid_columnconfigure(3, minsize=200)
+        header.grid_columnconfigure(1, minsize=200)
+        header.grid_columnconfigure(2, minsize=150)
+        header.grid_columnconfigure(3, minsize=150)
         header.grid_columnconfigure(4, minsize=50)
         header.grid_columnconfigure(5, minsize=20)
         header.grid_columnconfigure(6, minsize=100)
@@ -66,6 +67,9 @@ class NetworkPage(Frame):
     def __connect_server(self):
         ConnectServerWindow(self)
 
+    def __download_magnet_link(self):
+        MagnetLinkDownloadWindow(self)
+
 class SwarmFrame(Frame):
     def __init__(self, parent, swarm: dict):
         super().__init__(parent, pady=2, bg="white")
@@ -78,9 +82,9 @@ class SwarmFrame(Frame):
         self.seeders = swarm['seeders']
 
         self.grid_columnconfigure(0, minsize=30)
-        self.grid_columnconfigure(1, minsize=150)
-        self.grid_columnconfigure(2, minsize=200)
-        self.grid_columnconfigure(3, minsize=200)
+        self.grid_columnconfigure(1, minsize=200)
+        self.grid_columnconfigure(2, minsize=150)
+        self.grid_columnconfigure(3, minsize=150)
         self.grid_columnconfigure(4, minsize=50)
         self.grid_columnconfigure(5, minsize=20)
         self.grid_columnconfigure(6, weight=1, minsize=100)
@@ -93,11 +97,29 @@ class SwarmFrame(Frame):
         Label(self, text=self.seeders, font=("Arial", 8), bg="white", fg="black").grid(column=5, row=0, padx=5, sticky="ew")
         Button(self, text="Download", font=('Arial', 8), bg="#0388B4", fg="white", command=self.download).grid(column=6, row=0, sticky="e", ipadx=15)
 
-        Canvas(self, height=2, bg="black", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=7,
+        Canvas(self, height=2, bg="#0388B4", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=7,
                                                                             sticky="ew")
     def download(self):
         ip, port = self.tracker
         self.parent.client.start_magnet_link_download(f"{ip}::{port}::{self.key}")
+
+class MagnetLinkDownloadWindow(Toplevel):
+    def __init__(self, parent):
+        super().__init__(parent, padx=5, pady=5)
+        self.parent = parent
+        self.server_conn_frames = []
+        self.magnet_link = StringVar()
+
+        self.grid_columnconfigure(0, weight=1)
+
+        Label(self, text="Enter magnet link: ", font=('Arial', 11), fg="black").grid(column=0, row=1, sticky="w", pady=5)
+        Entry(self, textvariable=self.magnet_link).grid(column=0, row=2, sticky="ew", padx=4)
+
+        Button(self, text="Add", command=self.__download, fg="#0388B4", bg="white").grid(column=1, row=2,
+                                                                                        padx=4, sticky="e")
+
+    def __download(self):
+        self.parent.client.start_magnet_link_download(self.magnet_link.get())
 
 class ConnectServerWindow(Toplevel):
     def __init__(self, parent):
@@ -130,7 +152,7 @@ class ConnectServerWindow(Toplevel):
         self.server_conn_frames = [ServerFrame(self, server_addr, idx)
                                    for idx, server_addr in enumerate(self.parent.client.get_all_servers())]
         for idx, server_conn_frame in enumerate(self.server_conn_frames):
-            server_conn_frame.grid(row=idx+4, column=0, columnspan=4, sticky="ew", padx=4, pady=4)
+            server_conn_frame.grid(row=idx+4, column=0, columnspan=4, sticky="ew")
 
     def __connect(self):
         self.parent.client.connect_server((self.server_ip.get(), int(self.server_port.get())))
@@ -140,10 +162,9 @@ class ConnectServerWindow(Toplevel):
 
 class ServerFrame(Frame):
     def __init__(self, parent, server_addr: HostAddress, idx: int):
-        super().__init__(parent, padx=5, pady=2, bg="white")
+        super().__init__(parent, padx=5, bg="white")
 
-        self.grid_columnconfigure(0, weight=1)
-        Label(self, text=f"[{idx}]", font=('Arial', 9), bg="white").grid(column=0, row=0, sticky="w")
-        Label(self, text=str(server_addr), font=('Arial', 9), bg="white").grid(column=0, row=0, sticky="w")
+        Label(self, text=f"[{idx}]", font=('Arial', 9), bg="white").grid(column=0, row=0, sticky="nws", pady=4)
+        Label(self, text=str(server_addr), font=('Arial', 9), bg="white").grid(column=0, row=0, sticky="nws")
 
         Canvas(self, height=2, bg="#0388B4", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=3, sticky="ew")

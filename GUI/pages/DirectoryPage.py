@@ -13,7 +13,7 @@ class DirectoryPage(Frame):
         self.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure(2, weight=1)
 
-        page_name = Label(self, text="Directory Page", font=("Arial", 18), fg="#0388B4")
+        page_name = Label(self, text="Directory Page", font=("Arial", 18, "bold"), fg="#0388B4")
         page_name.grid(row=0, column=0, columnspan=3, sticky="ew")
 
         self.file_frames = []
