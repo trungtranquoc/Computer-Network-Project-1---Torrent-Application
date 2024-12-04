@@ -61,7 +61,7 @@ class NetworkPage(Frame):
         swarm_frames = [SwarmFrame(self, swarm) for swarm in swarms]
 
         for idx, swarm_frame in enumerate(swarm_frames):
-            swarm_frame.grid(row=idx+3, column=0, columnspan=6, sticky="ew")
+            swarm_frame.grid(row=idx+3, column=0, columnspan=7, sticky="ew")
 
     def __connect_server(self):
         ConnectServerWindow(self)
@@ -83,7 +83,7 @@ class SwarmFrame(Frame):
         self.grid_columnconfigure(3, minsize=200)
         self.grid_columnconfigure(4, minsize=50)
         self.grid_columnconfigure(5, minsize=20)
-        self.grid_columnconfigure(6, minsize=100)
+        self.grid_columnconfigure(6, weight=1, minsize=100)
 
         Label(self, text=self.no, font=("Arial", 8), bg="white", fg="black").grid(column=0, row=0, sticky="ew")
         Label(self, text=self.name, font=("Arial", 8), bg="white", fg="black").grid(column=1, row=0, sticky="w")
@@ -91,7 +91,7 @@ class SwarmFrame(Frame):
         Label(self, text=self.key, font=("Arial", 8), bg="white", fg="black").grid(column=3, row=0, sticky="w")
         Label(self, text=self.size, font=("Arial", 8), bg="white", fg="black").grid(column=4, row=0, sticky="w")
         Label(self, text=self.seeders, font=("Arial", 8), bg="white", fg="black").grid(column=5, row=0, padx=5, sticky="ew")
-        Button(self, text="Download", font=('Arial', 8), bg="#0388B4", fg="white", command=self.download).grid(column=6, row=0, sticky="ew")
+        Button(self, text="Download", font=('Arial', 8), bg="#0388B4", fg="white", command=self.download).grid(column=6, row=0, sticky="e", ipadx=15)
 
         Canvas(self, height=2, bg="black", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=7,
                                                                             sticky="ew")
@@ -115,7 +115,7 @@ class ConnectServerWindow(Toplevel):
         Label(self, text="Port: ", font=('Arial', 9), fg="black").grid(column=2, row=1, sticky="w")
         Entry(self, textvariable=self.server_port).grid(column=3, row=1, sticky="ew", pady=5, padx=4)
 
-        Button(self, text="Add", command=self.__connect, fg="white", bg="#0388B4").grid(column=3, row=2, ipadx=5,
+        Button(self, text="Add", command=self.__connect, fg="#0388B4", bg="white").grid(column=3, row=2, ipadx=10,
                                                                                         padx=4, sticky="e")
 
         Label(self, text="All connected servers", font=('Arial', 12), fg="black").grid(column=0, row=3,
@@ -146,4 +146,4 @@ class ServerFrame(Frame):
         Label(self, text=f"[{idx}]", font=('Arial', 9), bg="white").grid(column=0, row=0, sticky="w")
         Label(self, text=str(server_addr), font=('Arial', 9), bg="white").grid(column=0, row=0, sticky="w")
 
-        Canvas(self, height=2, bg="black", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=3, sticky="ew")
+        Canvas(self, height=2, bg="#0388B4", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=3, sticky="ew")

@@ -1,0 +1,41 @@
+{
+    "tracker": {
+        "ip": "192.168.100.184",
+        "port": 1232
+    },
+    "name": "test_1",
+    "extension": ".txt",
+    "size": 28746,
+    "piece_size": 1024,
+    "pieces": [
+        "066dcfe816a48d1a4a9998563fa1163ce659289c",
+        "f89ab894e0251422ddb26235e12b6c48c3b74726",
+        "3264b31c55b72a06c6c345b04023381983720941",
+        "4b026939bb674410405c48282fe18922dac94eec",
+        "6dd609091d1d8fd572bc2d18d43c01ec05663c0a",
+        "09989639143bc49c89b6432ca13d44802ae6eebc",
+        "2d3fcba16005461a5f97d566b0e5c86163a093be",
+        "187a34b8e0cfc7b162e61984fb66cc84f49106e9",
+        "238916481ced7ed7f76b31c72ab6cc562d618c52",
+        "62beac930d817c4d808930effb9f426f03b2bf03",
+        "f8f5515a619dc83073a896367f293497d6d886d4",
+        "2f18c6a7d9f868bac80fd9beaa5c204074dba163",
+        "a1baf9bb005064abfb66610723839c870e088f21",
+        "5c5987bf7ff3a5d9f1b05f798cbc20b5df237ca5",
+        "63a3826fc731f15bda54cb98fce570e0706a1d92",
+        "5de00b81ab6bed50cac2907c55177626b777338b",
+        "32a7c099d2acdc7ff24d3bedeff2f1122844d1d0",
+        "047c6fcd14944617370580c5c4bbe598b9b13cc4",
+        "499b523f20ec2d9fe1f44ea8878cd1cc83a0fadd",
+        "275b6238a7b60485237c0ff85b41403ee38af4ff",
+        "74fb01d9bb59f5855b3b768cf3017845be425447",
+        "dc579ecf44786fcf42eef97b98664dc3457dad42",
+        "c327f7d28baaacd9d12c95392f216adc853022f5",
+        "943ac2d6d8a03a532dd7c2806ae75ecafebb3fd4",
+        "46b89be15ef4afe40968790beaa16705252b51bc",
+        "aa1756191452df0ffc239570ceb53e618e4ddb67",
+        "f0f6b553d7f3cc58d4a431c2f925bc62cc14c013",
+        "364535fca898b616c849e46f6e44eaf6a06fddf9",
+        "ce82fd4b5831193447769b899fe4ef6375da3d10"
+    ]
+}

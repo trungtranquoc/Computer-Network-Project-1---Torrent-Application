@@ -100,7 +100,8 @@ class Client(Thread):
                 raise Exception(f'Client already in this swarm ! Swarm key: {swarm_key}')
 
             # Save information of swarm
-            swarm_data = SeederSwarm(swarm_key, server_conn)
+            file_name = data['name'] + data['extension']
+            swarm_data = SeederSwarm(swarm_key, server_conn, file_name)
             self.__swarms[swarm_key] = swarm_data
 
             print(f'[SUCCESSFULLY] New swarm has been created in server: {swarm_key} !')
@@ -204,7 +205,11 @@ class Client(Thread):
 
         return list(self.__download_tasks.values())
 
-    def show_swarms(self):
+    def show_swarms(self) -> List[Swarm]:
+        """
+            Retrieve list of swarms that this client is joining
+        :return:
+        """
         print("\nShow swarm...")
 
         if len(self.__swarms) == 0:
@@ -212,6 +217,8 @@ class Client(Thread):
         else:
             for idx, swarm in enumerate(self.__swarms.values()):
                 print(f"[{idx + 1}] {swarm.server_conn.get_hostAddress()} - {swarm.file_id} - {swarm.get_status()}")
+
+        return list(self.__swarms.values())
 
     def get_all_swarms(self) -> List[dict]:
         """

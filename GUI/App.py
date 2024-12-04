@@ -24,19 +24,20 @@ class App(tk.Tk):
         self.frames = {}
 
         # Add sidebar buttons
-        self.add_sidebar_button("Swarms Network", "NetworkPage", 0)
-        self.add_sidebar_button("Downloading Tasks", "DownloadingTaskPage", 1)
-        self.add_sidebar_button("Directory", "DirectoryPage", 2)
+        self.add_sidebar_button("Directory", "DirectoryPage", 0)
+        self.add_sidebar_button("Swarms Network", "NetworkPage", 1)
+        self.add_sidebar_button("Local Swarms", "SwarmPage", 2)
+        self.add_sidebar_button("Downloading Tasks", "DownloadingTaskPage", 3)
 
         # Initialize pages
-        for Page in (NetworkPage, DownloadingTaskPage, DirectoryPage):
+        for Page in (NetworkPage, DownloadingTaskPage, DirectoryPage, SwarmPage):
             page_name = Page.__name__
             frame = Page(parent=self.content, controller=self, client=client)
             self.frames[page_name] = frame
             frame.grid(row=0, column=0, sticky="news")
 
         # Show the initial page
-        self.show_frame("NetworkPage")
+        self.show_frame("DirectoryPage")
 
     def add_sidebar_button(self, text, page_name, idx: int):
         """Create a button in the sidebar for navigation."""

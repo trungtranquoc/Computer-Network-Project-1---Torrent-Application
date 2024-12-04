@@ -19,7 +19,7 @@ class DirectoryPage(Frame):
         self.file_frames = []
         self.torrent_file_frames = []
 
-        Label(self, text="Directory Path", fg="#0388B4", font=('Arial', 12)).grid(row=2, column=0, sticky="w")
+        Label(self, text="Directory Path", fg="#0388B4", font=('Arial', 14, "bold")).grid(row=2, column=0, sticky="w")
 
         # Update button
         self.update_button = Button(self, text="Update", font=('Arial', 10), bg="#0388B4", fg="white", command=self.update)
@@ -44,7 +44,7 @@ class DirectoryPage(Frame):
             file_frame.grid(row=idx+3, column=0, columnspan=3, sticky="ew")
 
         # Torrent directory
-        Label(self, text="Torrents", font=("Arial", 12), fg="#0388B4").grid(row=3+len(self.file_frames),
+        Label(self, text="Torrents", font=("Arial", 14, "bold"), fg="#0388B4").grid(row=3+len(self.file_frames),
                                                                             column=0, sticky="w", padx=5, pady=5)
 
         # Torrent file frames
@@ -68,7 +68,7 @@ class FileFrame(Frame):
         button = Button(self, text="Create torrent", font=("Arial", 10), bg="white", fg="#0388B4", command=self.__create_torrent)
         button.grid(column=2, row=0, ipadx=2, ipady=2, sticky="e")
 
-        Canvas(self, height=2, bg="black", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=3, sticky="ew")
+        Canvas(self, height=2, bg="#0388B4", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=3, sticky="ew")
 
     def __create_torrent(self):
         self.parent.create_torrent(self.file_name)
@@ -94,7 +94,7 @@ class TorrentFileFrame(Frame):
                                  command=lambda: self.parent.client.start_download(self.file_name))
         download_button.grid(column=1, row=0, ipadx=2, padx=5, ipady=1, sticky="e")
 
-        Canvas(self, height=2, bg="black", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=3, sticky="ew")
+        Canvas(self, height=2, bg="#0388B4", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=3, sticky="ew")
 
 class CreateTorrentWindow(Toplevel):
     def __init__(self, parent, file_name: str):

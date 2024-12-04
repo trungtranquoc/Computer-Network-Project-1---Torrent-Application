@@ -1,0 +1,29 @@
+{
+    "tracker": {
+        "ip": "192.168.100.184",
+        "port": 1232
+    },
+    "name": "file_1",
+    "extension": ".txt",
+    "size": 8700,
+    "piece_size": 512,
+    "pieces": [
+        "fd5fe539efb24eadf9ff4b2b0fa7115a21a12606",
+        "192d4e4041747a6d4f48c5fe78b98ed69273c3cd",
+        "714b028699454e6f69483e61cfa110952d531694",
+        "08f6c235a453696480d19d827170120547355655",
+        "aa9d453b1f0e20ad4a9c606b619465d578abd7e2",
+        "68f37e2662724078be5e07485ef61c942470f2b0",
+        "d411f0a2a123a814dc7342a03f31d452c768b623",
+        "dcb3a0c81f0d80554738c390ccad9db7fb5c0589",
+        "8420d9713dae1702531ecf126fb920b1b9b3d31a",
+        "bf7dcc7bb063f0c73415c6246c5474ed4e2a71b1",
+        "3331ce7ea6ebbe04f6b76c86c70d3f56cb9badcc",
+        "33daa8b734ec3c3afc12ccfdd83225e77e730afb",
+        "be8799eac41d57f24da16d5fefc3caaffee6525e",
+        "5937d717b498d25810e327dda02386ab5853e593",
+        "b1a6b363150559f93f06849153a8eb6578324cd9",
+        "6e9450e995aa5f9eed05ab8052569ef946cc066a",
+        "da5594def155773b7a67d18cec149b7e2ef4e137"
+    ]
+}
