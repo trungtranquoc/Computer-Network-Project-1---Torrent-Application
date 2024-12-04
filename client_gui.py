@@ -16,4 +16,6 @@ if __name__ == "__main__":
     app = App(client)
     app.mainloop()
 
+    print("Program has been terminated")
+
     sys.exit()

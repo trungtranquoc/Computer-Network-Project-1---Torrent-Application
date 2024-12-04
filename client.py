@@ -23,7 +23,7 @@ class Client(Thread):
     __command_line_thread: threading.Thread
     __swarms: Dict[int, Swarm]
     __download_tasks: Dict[int, DownloadThread]
-    __command_line_lock = threading.Lock()
+    command_line_lock = threading.Lock()
 
     def __init__(self, port: int, listen_port: int, ip: str = "localhost"):
         super().__init__()
@@ -34,11 +34,9 @@ class Client(Thread):
         self.__swarms = {}
         self.__download_tasks = {}
 
-        # Multitasking
-        self.__command_line_thread = threading.Thread(target=self.__command_line_program)
         self.__listener_thread = ClientListenThread(self.__folder_path, addr=self.__listen_addr,
                                                     client_name=f"client_{port}",
-                                                    command_line_lock=self.__command_line_lock)
+                                                    command_line_lock=self.command_line_lock)
 
         # Case client not exist yet, then we add directory
         if not os.path.exists(self.__folder_path):
@@ -48,11 +46,7 @@ class Client(Thread):
             os.makedirs(torrent_folder)
 
     def run(self):
-        self.__command_line_thread.start()
         self.__listener_thread.start()  # Start listener thread
-
-        # Wait for command_line program to be terminated
-        self.__command_line_thread.join()
 
     def get_ip_addr(self):
         return self.__client_addr
@@ -100,7 +94,8 @@ class Client(Thread):
                 raise Exception(f'Client already in this swarm ! Swarm key: {swarm_key}')
 
             # Save information of swarm
-            swarm_data = SeederSwarm(swarm_key, server_conn)
+            file_name = data['name'] + data['extension']
+            swarm_data = SeederSwarm(swarm_key, server_conn, file_name)
             self.__swarms[swarm_key] = swarm_data
 
             print(f'[SUCCESSFULLY] New swarm has been created in server: {swarm_key} !')
@@ -204,7 +199,11 @@ class Client(Thread):
 
         return list(self.__download_tasks.values())
 
-    def show_swarms(self):
+    def show_swarms(self) -> List[Swarm]:
+        """
+            Retrieve list of swarms that this client is joining
+        :return:
+        """
         print("\nShow swarm...")
 
         if len(self.__swarms) == 0:
@@ -212,6 +211,8 @@ class Client(Thread):
         else:
             for idx, swarm in enumerate(self.__swarms.values()):
                 print(f"[{idx + 1}] {swarm.server_conn.get_hostAddress()} - {swarm.file_id} - {swarm.get_status()}")
+
+        return list(self.__swarms.values())
 
     def get_all_swarms(self) -> List[dict]:
         """
@@ -298,50 +299,50 @@ class Client(Thread):
 
         return self.__connections[server_addr]
 
-    def __command_line_program(self):
-        while True:
-            command = input(f"\nclient_{self.__client_addr[1]}> ")
+def command_line_program(client: Client):
+    while True:
+        command = input(f"\nclient_{client.get_ip_addr()[1]}> ")
 
-            if command == "quit":
-                break
+        if command == "quit":
+            break
 
-            info = command.split()
-            with self.__command_line_lock:
-                print("-" * 33)
+        info = command.split()
+        with client.command_line_lock:
+            print("-" * 33)
 
-                if len(info) == 5 and info[0] == "create" and info[1] == "torrent":
-                    server_addr = info[3], int(info[4])
-                    self.create_torrent_file(file_name=info[2], server_addr=server_addr)
-                elif len(info) == 6 and info[0] == "create" and info[1] == "torrent":
-                    server_addr = info[3], int(info[4])
-                    piece_size = int(info[5])
-                    self.create_torrent_file(file_name=info[2], server_addr=server_addr, piece_size=piece_size)
-                elif len(info) == 2 and info[0] == "upload":
-                    self.upload_torrent(torrent_file=info[1])
-                elif len(info) == 2 and info[0] == "download":
-                    self.start_download(torrent_file=info[1])
-                elif len(info) == 3 and info[0] == "download" and info[1] == "key":
-                    self.start_magnet_link_download(magnet_link=info[2])
-                elif len(info) == 2 and info[0] == "skip":
-                    self.skip_progress(int(info[1]))
-                elif len(info) == 2 and info[0] == "show" and info[1] == "progress":
-                    self.show_progress()
-                elif len(info) == 2 and info[0] == "show" and info[1] == "directory":
-                    self.show_directory()
-                elif len(info) == 2 and info[0] == "show" and info[1] == "swarm":
-                    self.show_swarms()
-                elif len(info) == 3 and info[0] == "show" and info[1] == "server" and info[2] == "swarm":
-                    self.get_all_swarms()
-                elif len(info) == 1 and info[0] == "help":
-                    client_help()
-                elif len(info) == 0:
-                    pass
-                else:
-                    print("[ERROR] Command not found")
+            if len(info) == 5 and info[0] == "create" and info[1] == "torrent":
+                server_addr = info[3], int(info[4])
+                client.create_torrent_file(file_name=info[2], server_addr=server_addr)
+            elif len(info) == 6 and info[0] == "create" and info[1] == "torrent":
+                server_addr = info[3], int(info[4])
+                piece_size = int(info[5])
+                client.create_torrent_file(file_name=info[2], server_addr=server_addr, piece_size=piece_size)
+            elif len(info) == 2 and info[0] == "upload":
+                client.upload_torrent(torrent_file=info[1])
+            elif len(info) == 2 and info[0] == "download":
+                client.start_download(torrent_file=info[1])
+            elif len(info) == 3 and info[0] == "download" and info[1] == "key":
+                client.start_magnet_link_download(magnet_link=info[2])
+            elif len(info) == 2 and info[0] == "skip":
+                client.skip_progress(int(info[1]))
+            elif len(info) == 2 and info[0] == "show" and info[1] == "progress":
+                client.show_progress()
+            elif len(info) == 2 and info[0] == "show" and info[1] == "directory":
+                client.show_directory()
+            elif len(info) == 2 and info[0] == "show" and info[1] == "swarm":
+                client.show_swarms()
+            elif len(info) == 3 and info[0] == "show" and info[1] == "server" and info[2] == "swarm":
+                client.get_all_swarms()
+            elif len(info) == 1 and info[0] == "help":
+                client_help()
+            elif len(info) == 0:
+                pass
+            else:
+                print("[ERROR] Command not found")
 
-                print("-" * 33)
+            print("-" * 33)
 
-        print("Program has been terminated!")
+    print("Program has been terminated!")
 
 
 if __name__ == "__main__":
@@ -353,11 +354,16 @@ if __name__ == "__main__":
     ip_addr = socket.gethostbyname(socket.gethostname())
     port = int(sys.argv[1])
 
+    # Start client program
     listen_port = int(sys.argv[2])
     client = Client(port, listen_port, ip_addr)
     client.start()
 
-    # Wait for client to end
-    client.join()
+    # Start command_line_program
+    command_line_thread = threading.Thread(target=command_line_program, args=(client,))
+    command_line_thread.start()
+
+    # Wait for command_line_thread to join
+    command_line_thread.join()
 
     sys.exit()

@@ -102,7 +102,7 @@ class DownloadingFrame(Frame):
         self.progress.draw(self.winfo_width())
 
 class ProgressBar(Canvas):
-    def __init__(self, parent, bit_string: str, height: int = 16):
+    def __init__(self, parent, bit_string: str, height: int = 10):
         super().__init__(parent, width=400, height=height, bg="white", highlightthickness=1, highlightbackground="black")
         self.width = 0
         self.height = height
