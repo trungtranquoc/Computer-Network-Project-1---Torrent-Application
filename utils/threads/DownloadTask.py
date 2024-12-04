@@ -26,7 +26,8 @@ class DownloadThread(Thread, Swarm):
     def __init__(self, file_id: int, torrent_data: dict, seeders: List[HostAddress], server_conn: Connection,                       # Notify server to become seeder
                  listen_addr: HostAddress, download_dir: Path, daemon: bool = True):
         Thread.__init__(self, daemon=daemon)
-        Swarm.__init__(self, file_id=file_id, server_conn=server_conn)
+        Swarm.__init__(self, file_id=file_id, server_conn=server_conn,
+                       file_name=torrent_data['name'] + torrent_data['extension'])
         self.__torrent_data = torrent_data
         self.__seeders = seeders
         self.__download_dir = download_dir
@@ -98,9 +99,9 @@ class DownloadThread(Thread, Swarm):
         pieces = len(list(filter(lambda x: x == '1', self.bit_field)))
 
         if self.status == DownloadStatus.DOWNLOADING:
-            return (time.time() - self.start_time) / pieces * self.__torrent_data['piece_size']
+            return  pieces * self.__torrent_data['piece_size'] / (time.time() - self.start_time)
         elif self.status == DownloadStatus.COMPLETE:
-            return (self.end_time - self.start_time) / pieces * self.__torrent_data['piece_size']
+            return pieces * self.__torrent_data['piece_size'] / (self.end_time - self.start_time)
         else:
             return 0
 

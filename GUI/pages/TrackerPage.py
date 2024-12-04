@@ -10,7 +10,7 @@ class NetworkPage(Frame):
         self.controller = controller
         self.client = client
 
-        page_name = Label(self, text="Server swarm page", font=("Arial", 18), fg="#0388B4")
+        page_name = Label(self, text="Server Swarms Page", font=("Arial", 18, "bold"), fg="#0388B4")
         page_name.grid_columnconfigure(0, weight=1)
         page_name.grid_rowconfigure(0, weight=1)
         page_name.grid(row=0, column=0, columnspan=6, sticky="ew")
@@ -35,9 +35,9 @@ class NetworkPage(Frame):
         header.grid(row=2, column=0, columnspan=7, sticky="ew")
 
         header.grid_columnconfigure(0, minsize=30)
-        header.grid_columnconfigure(1, minsize=150)
-        header.grid_columnconfigure(2, minsize=200)
-        header.grid_columnconfigure(3, minsize=200)
+        header.grid_columnconfigure(1, minsize=200)
+        header.grid_columnconfigure(2, minsize=150)
+        header.grid_columnconfigure(3, minsize=150)
         header.grid_columnconfigure(4, minsize=50)
         header.grid_columnconfigure(5, minsize=20)
         header.grid_columnconfigure(6, minsize=100)
@@ -61,7 +61,7 @@ class NetworkPage(Frame):
         swarm_frames = [SwarmFrame(self, swarm) for swarm in swarms]
 
         for idx, swarm_frame in enumerate(swarm_frames):
-            swarm_frame.grid(row=idx+3, column=0, columnspan=6, sticky="ew")
+            swarm_frame.grid(row=idx+3, column=0, columnspan=7, sticky="ew")
 
     def __connect_server(self):
         ConnectServerWindow(self)
@@ -78,12 +78,12 @@ class SwarmFrame(Frame):
         self.seeders = swarm['seeders']
 
         self.grid_columnconfigure(0, minsize=30)
-        self.grid_columnconfigure(1, minsize=150)
-        self.grid_columnconfigure(2, minsize=200)
-        self.grid_columnconfigure(3, minsize=200)
+        self.grid_columnconfigure(1, minsize=200)
+        self.grid_columnconfigure(2, minsize=150)
+        self.grid_columnconfigure(3, minsize=150)
         self.grid_columnconfigure(4, minsize=50)
         self.grid_columnconfigure(5, minsize=20)
-        self.grid_columnconfigure(6, minsize=100)
+        self.grid_columnconfigure(6, weight=1, minsize=100)
 
         Label(self, text=self.no, font=("Arial", 8), bg="white", fg="black").grid(column=0, row=0, sticky="ew")
         Label(self, text=self.name, font=("Arial", 8), bg="white", fg="black").grid(column=1, row=0, sticky="w")
@@ -91,9 +91,9 @@ class SwarmFrame(Frame):
         Label(self, text=self.key, font=("Arial", 8), bg="white", fg="black").grid(column=3, row=0, sticky="w")
         Label(self, text=self.size, font=("Arial", 8), bg="white", fg="black").grid(column=4, row=0, sticky="w")
         Label(self, text=self.seeders, font=("Arial", 8), bg="white", fg="black").grid(column=5, row=0, padx=5, sticky="ew")
-        Button(self, text="Download", font=('Arial', 8), bg="#0388B4", fg="white", command=self.download).grid(column=6, row=0, sticky="ew")
+        Button(self, text="Download", font=('Arial', 8), bg="#0388B4", fg="white", command=self.download).grid(column=6, row=0, sticky="e", ipadx=15)
 
-        Canvas(self, height=2, bg="black", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=7,
+        Canvas(self, height=2, bg="#0388B4", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=7,
                                                                             sticky="ew")
     def download(self):
         ip, port = self.tracker
@@ -115,7 +115,7 @@ class ConnectServerWindow(Toplevel):
         Label(self, text="Port: ", font=('Arial', 9), fg="black").grid(column=2, row=1, sticky="w")
         Entry(self, textvariable=self.server_port).grid(column=3, row=1, sticky="ew", pady=5, padx=4)
 
-        Button(self, text="Add", command=self.__connect, fg="white", bg="#0388B4").grid(column=3, row=2, ipadx=5,
+        Button(self, text="Add", command=self.__connect, fg="#0388B4", bg="white").grid(column=3, row=2, ipadx=10,
                                                                                         padx=4, sticky="e")
 
         Label(self, text="All connected servers", font=('Arial', 12), fg="black").grid(column=0, row=3,
@@ -130,7 +130,7 @@ class ConnectServerWindow(Toplevel):
         self.server_conn_frames = [ServerFrame(self, server_addr, idx)
                                    for idx, server_addr in enumerate(self.parent.client.get_all_servers())]
         for idx, server_conn_frame in enumerate(self.server_conn_frames):
-            server_conn_frame.grid(row=idx+4, column=0, columnspan=4, sticky="ew", padx=4, pady=4)
+            server_conn_frame.grid(row=idx+4, column=0, columnspan=4, sticky="ew")
 
     def __connect(self):
         self.parent.client.connect_server((self.server_ip.get(), int(self.server_port.get())))
@@ -140,10 +140,9 @@ class ConnectServerWindow(Toplevel):
 
 class ServerFrame(Frame):
     def __init__(self, parent, server_addr: HostAddress, idx: int):
-        super().__init__(parent, padx=5, pady=2, bg="white")
+        super().__init__(parent, padx=5, bg="white")
 
-        self.grid_columnconfigure(0, weight=1)
-        Label(self, text=f"[{idx}]", font=('Arial', 9), bg="white").grid(column=0, row=0, sticky="w")
-        Label(self, text=str(server_addr), font=('Arial', 9), bg="white").grid(column=0, row=0, sticky="w")
+        Label(self, text=f"[{idx}]", font=('Arial', 9), bg="white").grid(column=0, row=0, sticky="nws", pady=4)
+        Label(self, text=str(server_addr), font=('Arial', 9), bg="white").grid(column=0, row=0, sticky="nws")
 
-        Canvas(self, height=2, bg="black", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=3, sticky="ew")
+        Canvas(self, height=2, bg="#0388B4", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=3, sticky="ew")
