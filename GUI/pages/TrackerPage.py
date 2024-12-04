@@ -10,7 +10,7 @@ class NetworkPage(Frame):
         self.controller = controller
         self.client = client
 
-        page_name = Label(self, text="Server swarm page", font=("Arial", 18), fg="#0388B4")
+        page_name = Label(self, text="Server Swarms Page", font=("Arial", 18, "bold"), fg="#0388B4")
         page_name.grid_columnconfigure(0, weight=1)
         page_name.grid_rowconfigure(0, weight=1)
         page_name.grid(row=0, column=0, columnspan=6, sticky="ew")
@@ -130,7 +130,7 @@ class ConnectServerWindow(Toplevel):
         self.server_conn_frames = [ServerFrame(self, server_addr, idx)
                                    for idx, server_addr in enumerate(self.parent.client.get_all_servers())]
         for idx, server_conn_frame in enumerate(self.server_conn_frames):
-            server_conn_frame.grid(row=idx+4, column=0, columnspan=4, sticky="ew", padx=4, pady=4)
+            server_conn_frame.grid(row=idx+4, column=0, columnspan=4, sticky="ew")
 
     def __connect(self):
         self.parent.client.connect_server((self.server_ip.get(), int(self.server_port.get())))
@@ -140,10 +140,9 @@ class ConnectServerWindow(Toplevel):
 
 class ServerFrame(Frame):
     def __init__(self, parent, server_addr: HostAddress, idx: int):
-        super().__init__(parent, padx=5, pady=2, bg="white")
+        super().__init__(parent, padx=5, bg="white")
 
-        self.grid_columnconfigure(0, weight=1)
-        Label(self, text=f"[{idx}]", font=('Arial', 9), bg="white").grid(column=0, row=0, sticky="w")
-        Label(self, text=str(server_addr), font=('Arial', 9), bg="white").grid(column=0, row=0, sticky="w")
+        Label(self, text=f"[{idx}]", font=('Arial', 9), bg="white").grid(column=0, row=0, sticky="nws", pady=4)
+        Label(self, text=str(server_addr), font=('Arial', 9), bg="white").grid(column=0, row=0, sticky="nws")
 
         Canvas(self, height=2, bg="#0388B4", bd=0, highlightthickness=0).grid(row=1, column=0, columnspan=3, sticky="ew")

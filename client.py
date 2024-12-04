@@ -64,7 +64,7 @@ class Client(Thread):
         file_path = Path(self.__folder_path) / file_name
         output_dir = self.__folder_path / 'torrents'
 
-        print(f"\nCreate torrent file {file_name} that connect to tracker {server_addr}...")
+        print(f"Create torrent file {file_name} that connect to tracker {server_addr}...")
 
         try:
             torrent_path = generate_torrent_file(file_path, output_dir, server_addr, piece_size)
@@ -120,7 +120,7 @@ class Client(Thread):
             print(f'[SUCCESSFULLY] Skip downloading file with id {file_id}')
 
     def start_download(self, torrent_file: str):
-        print(f"\nStart downloading file {torrent_file}...")
+        print(f"Start downloading file {torrent_file}...")
 
         try:
             with open(Path(self.__folder_path) / 'torrents' / torrent_file, 'r') as tf:
@@ -167,7 +167,7 @@ class Client(Thread):
         files: List[str] = []
         torrent_files: List[str] = []
 
-        print(f"\nShow directory...")
+        print(f"Show directory...")
 
         for f in os.listdir(self.__folder_path):
             print(f'-> {f}')
@@ -204,7 +204,7 @@ class Client(Thread):
             Retrieve list of swarms that this client is joining
         :return:
         """
-        print("\nShow swarm...")
+        print("Show swarm...")
 
         if len(self.__swarms) == 0:
             print("The client has not joined any swarm !")
@@ -227,7 +227,7 @@ class Client(Thread):
         """
         swarm_data: List[dict] = []
 
-        print("\nLoad swarms information from all connected servers...")
+        print("Load swarms information from all connected servers...")
 
         if not self.__connections.keys():
             print("The client has not yet connect to any server !")
@@ -265,6 +265,18 @@ class Client(Thread):
         :return: DownloadThread of the file
         """
         return self.__download_tasks[file_id]
+
+    def quit(self) -> None:
+        """
+        Disconnect to all server and quit the program
+
+        :return: None
+        """
+        for connection in self.__connections.values():
+            connection.quit()
+
+        print("Program has been terminated!")
+
 
     def __download(self, server_conn: Connection, torrent_data: dict, swarm_key: int, seeders: List[HostAddress]):
         if swarm_key in self.__swarms.keys() and self.__swarms[swarm_key].get_status() == SwarmStatus.SEEDER:
@@ -342,8 +354,6 @@ def command_line_program(client: Client):
 
             print("-" * 33)
 
-    print("Program has been terminated!")
-
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
@@ -365,5 +375,8 @@ if __name__ == "__main__":
 
     # Wait for command_line_thread to join
     command_line_thread.join()
+
+    # Delete all connections to server
+    client.quit()
 
     sys.exit()

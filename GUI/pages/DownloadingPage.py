@@ -16,11 +16,11 @@ class DownloadingTaskPage(Frame):
         self.grid_columnconfigure(1, weight=1)
         self.grid_columnconfigure(2, weight=1)
 
-        page_name = Label(self, text="Downloading Process", font=("Arial", 18), fg="#0388B4")
+        page_name = Label(self, text="Downloading Processes Page", font=("Arial", 18, "bold"), fg="#0388B4")
         page_name.grid(row=0, column=0, columnspan=3, sticky="ew")
 
         self.update_button = Button(self, text="Update", command=self.update,
-                                    fg="white", bg="#0388B4", font=("Arial", 10))
+                                    fg="#0388B4", bg="white", font=("Arial", 10))
         self.update_button.grid(row=1, column=2, sticky="ew", pady=2, padx=2)
 
         self.download_frames = []

@@ -12,7 +12,7 @@ class SwarmPage(Frame):
         self.controller = controller
         self.client = client
 
-        page_name = Label(self, text="Local swarm page", font=("Arial", 18), fg="#0388B4")
+        page_name = Label(self, text="Local Swarms Page", font=("Arial", 18, "bold"), fg="#0388B4")
         page_name.grid_columnconfigure(0, weight=1)
         page_name.grid_rowconfigure(0, weight=1)
         page_name.grid(row=0, column=0, columnspan=6, sticky="ew")
