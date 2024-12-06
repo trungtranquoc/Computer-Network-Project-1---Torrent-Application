@@ -56,6 +56,12 @@ def client_help():
     print(f"{DESCRIPTION}                      and its role being Seeder or Leecher in that swarm.{END}")
     print(f"{EXAMPLE____}                      Example: show swarm{END}\n")
 
+    print(f"{COMMAND____}  show server swarm{END}")
+    print(f"{DESCRIPTION}                      Retrive list of swarms from all connected servers,{END}")
+    print(f"{NOTE_______}                      Note: This command will request all connected servers, {END}")
+    print(f"{NOTE_______}                      so, make sure to connect to server before requesting {END}")
+    print(f"{EXAMPLE____}                      Example: show server swarm{END}\n")
+
     print(f"{COMMAND____}  quit{END}")
     print(f"{DESCRIPTION}                      Exit the client program.{END}")
     print(f"{EXAMPLE____}                      Example: quit{END}")

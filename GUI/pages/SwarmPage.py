@@ -52,7 +52,7 @@ class SwarmPage(Frame):
 
         # Get swarms information
         swarms = self.client.show_swarms()
-        swarm_frames = [ClientSwarmFrame(self, swarm, idx) for idx, swarm in enumerate(swarms)]
+        swarm_frames = [ClientSwarmFrame(self, swarm, idx+1) for idx, swarm in enumerate(swarms)]
 
         for idx, swarm_frame in enumerate(swarm_frames):
             swarm_frame.grid(row=idx+3, column=0, columnspan=4, sticky="ew")

@@ -14,6 +14,8 @@ class Server:
     __listener_thread: threading.Thread
     __command_line_thread: threading.Thread
     __swarms: dict
+
+    # Locking for safe using the sharing resources
     __swarms_lock: threading.Lock
     __command_line_lock: threading.Lock
 

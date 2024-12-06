@@ -20,9 +20,9 @@ class Client(Thread):
     __connections: Dict[HostAddress, Connection]
     __folder_path: Union[str, Path]
     __listener_thread: ClientListenThread
-    __command_line_thread: threading.Thread
     __swarms: Dict[int, Swarm]
     __download_tasks: Dict[int, DownloadThread]
+
     command_line_lock = threading.Lock()
 
     def __init__(self, port: int, listen_port: int, ip: str = "localhost"):
@@ -132,7 +132,7 @@ class Client(Thread):
                 print(f"Download file from server {server_addr}")
                 server_conn: Connection = self.__connect_server(server_addr)
                 if server_conn is None:
-                    raise ServerConnectionError('Can not connect to server {server_addr}')
+                    raise ServerConnectionError(f'Can not connect to server {server_addr}')
 
                 # Send data
                 swarm_key, seeders = server_conn.download_command(torrent_data=json.dumps(data))
@@ -238,7 +238,7 @@ class Client(Thread):
 
             swarm_data  = [swarm | {'no': idx+1} for idx, swarm in enumerate(swarm_data)]
             for swarm in swarm_data:
-                print(f"[{swarm['no']}] - {swarm['tracker']} - {swarm['key']} - {swarm['name']} - {swarm['size']} - {swarm['seeders']}")
+                print(f"[{swarm['no']}] - {swarm['tracker']} - {swarm['key']} - {swarm['name']} - {swarm['size']} - Seeders: {swarm['seeders']}")
             return swarm_data
         except Exception as e:
             print(f"[ERROR] Can not retrieve swarms due to error: {e}")
@@ -370,11 +370,7 @@ if __name__ == "__main__":
     client.start()
 
     # Start command_line_program
-    command_line_thread = threading.Thread(target=command_line_program, args=(client,))
-    command_line_thread.start()
-
-    # Wait for command_line_thread to join
-    command_line_thread.join()
+    command_line_program(client)
 
     # Delete all connections to server
     client.quit()

@@ -59,9 +59,9 @@ class NetworkPage(Frame):
 
         # Get swarms information
         swarms = self.client.get_all_swarms()
-        swarm_frames = [SwarmFrame(self, swarm) for swarm in swarms]
+        self.swarm_frames = [SwarmFrame(self, swarm) for swarm in swarms]
 
-        for idx, swarm_frame in enumerate(swarm_frames):
+        for idx, swarm_frame in enumerate(self.swarm_frames):
             swarm_frame.grid(row=idx+3, column=0, columnspan=7, sticky="ew")
 
     def __connect_server(self):
@@ -110,7 +110,7 @@ class MagnetLinkDownloadWindow(Toplevel):
         self.server_conn_frames = []
         self.magnet_link = StringVar()
 
-        self.grid_columnconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1, minsize=250)
 
         Label(self, text="Enter magnet link: ", font=('Arial', 11), fg="black").grid(column=0, row=1, sticky="w", pady=5)
         Entry(self, textvariable=self.magnet_link).grid(column=0, row=2, sticky="ew", padx=4)
@@ -120,6 +120,9 @@ class MagnetLinkDownloadWindow(Toplevel):
 
     def __download(self):
         self.parent.client.start_magnet_link_download(self.magnet_link.get())
+
+        self.parent.update()
+        self.destroy()
 
 class ConnectServerWindow(Toplevel):
     def __init__(self, parent):

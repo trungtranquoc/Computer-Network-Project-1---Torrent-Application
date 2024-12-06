@@ -4,7 +4,7 @@ from client import Client
 from utils.threads import DownloadThread
 from utils.threads.DownloadTask import DownloadStatus
 
-UPDATE_FREQUENCY = 0.5
+UPDATE_FREQUENCY: int = 500 # Unit: ms
 
 class DownloadingTaskPage(Frame):
     def __init__(self, parent, controller, client: Client):
@@ -51,8 +51,8 @@ class DownloadingFrame(Frame):
         self.bit_string = download_task.bit_field           # Bit string. Example: "111100000"
         self.status = download_task.status
         self.progress = None
-        self.status_label = Label(self, text=str(self.status), fg=status_color[self.status], bg='white')
-        self.download_rate = Label(self, text=f"Download rate: {int(download_task.get_download_rate())} B/s", fg=status_color[self.status], bg='white')
+        self.status_label = None
+        self.download_rate = None
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
@@ -61,8 +61,7 @@ class DownloadingFrame(Frame):
         Label(self, text=self.file_name, font=('Arial', 15, 'bold'), fg='#0388B4', bg='white').grid(row=1, column=0, rowspan=2, sticky="nws", pady=5)
         Button(self, text="Skip", font=('Arial', 9), fg='#0388B4', bg='white', command=self.skip_download).grid(row=2, column=1, sticky="e", ipadx=8, pady=4)
 
-        self.status_label.grid(row=0, column=1, sticky='e')
-        self.download_rate.grid(row=1, column=1, sticky='e')
+        self.update()
 
     def auto_update(self) -> None:
         """
@@ -71,7 +70,7 @@ class DownloadingFrame(Frame):
         self.update()
 
         if self.status == DownloadStatus.DOWNLOADING:
-            self.after(500, self.auto_update)
+            self.after(UPDATE_FREQUENCY, self.auto_update)
 
     def skip_download(self):
         self.parent.client.skip_progress(self.key)
@@ -86,11 +85,16 @@ class DownloadingFrame(Frame):
         self.status = download_task.status
 
         self.draw_progress()
-        self.status_label.grid_forget()
-        self.download_rate.grid_forget()
+        if self.status_label is not None:
+            self.status_label.grid_forget()
+        if self.download_rate is not None:
+            self.download_rate.grid_forget()
 
         self.status_label = Label(self, text=str(self.status), fg=status_color[self.status], bg='white')
-        self.download_rate = Label(self, text=f"Download rate: {int(download_task.get_download_rate())} B/s", fg=status_color[self.status], bg='white')
+        if self.status == DownloadStatus.ERROR:
+            self.download_rate = Label(self, text=f"Error: {download_task.error_message}", fg=status_color[self.status], bg='white')
+        else:
+            self.download_rate = Label(self, text=f"Download rate: {int(download_task.get_download_rate())} B/s", fg=status_color[self.status], bg='white')
         self.status_label.grid(row=0, column=1, sticky='e')
         self.download_rate.grid(row=1, column=1, sticky='e')
 
@@ -117,4 +121,4 @@ class ProgressBar(Canvas):
             segment_x1 = i * segment_width
             segment_x2 = segment_x1 + segment_width
             color = "green" if bit == '1' else "white"
-            self.create_rectangle(segment_x1, 0, segment_x2, 25, fill=color, outline="white")
+            self.create_rectangle(segment_x1, 0, segment_x2, self.height, fill=color, outline="white")
