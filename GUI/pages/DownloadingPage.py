@@ -27,7 +27,7 @@ class DownloadingTaskPage(Frame):
 
     def update(self):
         for download_frame in self.download_frames:
-            download_frame.destroy()
+            download_frame.grid_forget()
         self.download_frames = [DownloadingFrame(self, download_task) for download_task in self.client.show_progress()]
 
         for idx, download_frame in enumerate(self.download_frames):
@@ -53,13 +53,19 @@ class DownloadingFrame(Frame):
         self.progress = None
         self.status_label = None
         self.download_rate = None
+        self.skip_button = Button(self, text="Skip", font=('Arial', 9), fg='#0388B4', bg='white', command=self.skip_download)
+        self.re_download_button = Button(self, text="Re-download", font=('Arial', 9), fg='#0388B4', bg='white', command=self.re_download)
 
         self.grid_columnconfigure(0, weight=1)
         self.grid_columnconfigure(1, weight=1)
 
         Label(self, text=f"{self.server_addr} - {self.key}", font=('Arial', 8), fg='black', bg='white').grid(row=0, column=0, sticky="w")
         Label(self, text=self.file_name, font=('Arial', 15, 'bold'), fg='#0388B4', bg='white').grid(row=1, column=0, rowspan=2, sticky="nws", pady=5)
-        Button(self, text="Skip", font=('Arial', 9), fg='#0388B4', bg='white', command=self.skip_download).grid(row=2, column=1, sticky="e", ipadx=8, pady=4)
+
+        if self.status == DownloadStatus.DOWNLOADING:
+            self.skip_button.grid(row=2, column=1, sticky="e", ipadx=8, pady=4)
+        elif self.status == DownloadStatus.SKIPPED and self.status != DownloadStatus.ERROR:
+            self.re_download_button.grid(row=2, column=1, sticky="e", ipadx=8, pady=4)
 
         self.update()
 
@@ -71,6 +77,17 @@ class DownloadingFrame(Frame):
 
         if self.status == DownloadStatus.DOWNLOADING:
             self.after(UPDATE_FREQUENCY, self.auto_update)
+        else:
+            self.skip_button.grid_forget()
+            if self.status == DownloadStatus.SKIPPED and self.status != DownloadStatus.ERROR:
+                self.re_download_button.grid(row=2, column=1, sticky="e", ipadx=8, pady=4)
+
+    def re_download(self):
+        addr, ip = self.server_addr
+        magnet_link = f"{addr}::{ip}::{self.key}"
+
+        self.parent.client.start_magnet_link_download(magnet_link)
+        self.parent.update()
 
     def skip_download(self):
         self.parent.client.skip_progress(self.key)

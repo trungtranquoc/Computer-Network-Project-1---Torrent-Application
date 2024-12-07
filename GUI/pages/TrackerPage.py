@@ -55,7 +55,7 @@ class NetworkPage(Frame):
     def update(self):
         # destroy old frame
         for swarm_frame in self.swarm_frames:
-            swarm_frame.destroy()
+            swarm_frame.grid_forget()
 
         # Get swarms information
         swarms = self.client.get_all_swarms()
